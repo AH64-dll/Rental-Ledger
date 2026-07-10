@@ -123,7 +123,7 @@ export function Layout() {
                 {language === "ar" ? "العربية (Arabic)" : "English"}
               </span>
               <button
-                onClick={() => setLanguage(language === "ar" ? "en" : "ar")}
+                onClick={() => { setLanguage(language === "ar" ? "en" : "ar"); closeSidebar(); }}
                 className={`w-10 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-300 ${
                   language === "ar" ? "bg-blue-600 justify-end" : "bg-gray-300 justify-start"
                 }`}

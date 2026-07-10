@@ -23,7 +23,7 @@ export function TenantProfile() {
   const { data: tenant, isLoading, error } = useTenant(tenantId);
   const { data: balance } = useTenantBalance(tenantId);
   const { data: allCharges } = useAllCharges({ tenant_id: tenantId || undefined });
-  const { data: leases } = useLeases();
+  const { data: leases } = useLeases(tenantId || undefined);
   
   const updateMutation = useUpdateTenant();
   const deleteDebtMutation = useDeleteGeneralCharge();
@@ -64,7 +64,7 @@ export function TenantProfile() {
   const [paymentMethod, setPaymentMethod] = useState("");
 
   const personalDebts = allCharges?.filter((c) => c.lease_id === null) || [];
-  const tenantLeases = leases?.filter((l) => l.tenant_id === tenantId) || [];
+  const tenantLeases = leases || [];
 
   const handlePayment = (e: React.FormEvent, chargeId: number) => {
     e.preventDefault();
@@ -292,7 +292,7 @@ export function TenantProfile() {
         </button>
       </div>
 
-      {activeTab === "leases" && balance && (
+      {activeTab === "leases" && (
         <div className="space-y-6">
           {/* Leases Table */}
           <div className="bg-white rounded shadow-sm p-4">

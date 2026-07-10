@@ -2,10 +2,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import type { Lease } from "../types";
 
-export function useLeases() {
+export function useLeases(tenantId?: number) {
   return useQuery<Lease[]>({
-    queryKey: ["leases"],
-    queryFn: () => api.get("/leases/").then((r) => r.data),
+    queryKey: ["leases", { tenantId }],
+    queryFn: () => {
+      const params = tenantId !== undefined ? `?tenant_id=${tenantId}` : "";
+      return api.get(`/leases/${params}`).then((r) => r.data);
+    },
   });
 }
 

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
@@ -31,15 +31,15 @@ def _build_lease_response(lease: Lease) -> LeaseResponse:
 
 @router.get("/", response_model=list[LeaseResponse])
 def list_leases(
+    tenant_id: int | None = Query(None),
     db: Session = Depends(get_db),
     _: str = Depends(current_user),
 ) -> list[LeaseResponse]:
     lazy_expire_leases(db)
-    leases = db.execute(
-        select(Lease)
-        .options(joinedload(Lease.tenant), joinedload(Lease.unit))
-        .order_by(Lease.created_at.desc())
-    ).unique().scalars().all()
+    q = select(Lease).options(joinedload(Lease.tenant), joinedload(Lease.unit))
+    if tenant_id is not None:
+        q = q.where(Lease.tenant_id == tenant_id)
+    leases = db.execute(q.order_by(Lease.created_at.desc())).unique().scalars().all()
     return [_build_lease_response(lease) for lease in leases]
 
 
