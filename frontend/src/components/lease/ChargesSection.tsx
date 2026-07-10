@@ -1,40 +1,46 @@
 import { useState } from "react";
 import { Money } from "../Money";
 import { StatusPill } from "../StatusPill";
+import { ErrorBanner } from "../ErrorBanner";
 import { useLeaseCharges, useCreateCharge, useDeleteCharge } from "../../hooks/useCharges";
 import { PaymentsSection } from "./PaymentsSection";
+import { useLanguage } from "../../context/LanguageContext";
+import { getLocalDateString } from "../../utils/dateUtils";
 
 export function ChargesSection({ leaseId }: { leaseId: number }) {
   const { data: charges } = useLeaseCharges(leaseId);
   const createCharge = useCreateCharge();
   const deleteCharge = useDeleteCharge();
+  const { language, t } = useLanguage();
   const [showForm, setShowForm] = useState(false);
   const [description, setDescription] = useState("");
-  const [amountCents, setAmountCents] = useState(0);
-  const [chargeDate, setChargeDate] = useState("");
-  const [dueDate, setDueDate] = useState("");
+  const [amountEgp, setAmountEgp] = useState("");
   const [category, setCategory] = useState("rent");
   const [expandedCharge, setExpandedCharge] = useState<number | null>(null);
+  const [mutationError, setMutationError] = useState<string | null>(null);
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
+    const today = getLocalDateString();
+    setMutationError(null);
     createCharge.mutate(
       {
         leaseId,
         description,
-        amount_cents: amountCents,
-        charge_date: chargeDate,
-        due_date: dueDate || undefined,
+        amount_cents: Math.round(Number(amountEgp) * 100),
+        charge_date: today,
+        due_date: today,
         category: category || undefined,
       },
       {
         onSuccess: () => {
           setShowForm(false);
           setDescription("");
-          setAmountCents(0);
-          setChargeDate("");
-          setDueDate("");
+          setAmountEgp("");
           setCategory("rent");
+        },
+        onError: (err: any) => {
+          setMutationError(err?.response?.data?.detail || err?.message || t("operation_failed"));
         },
       }
     );
@@ -43,14 +49,16 @@ export function ChargesSection({ leaseId }: { leaseId: number }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-medium">Charges</h3>
+        <h3 className="text-lg font-medium">{t("charges")}</h3>
         <button
           onClick={() => setShowForm(!showForm)}
           className="bg-blue-600 text-white rounded px-4 py-2 text-sm font-medium"
         >
-          Add Charge
+          {t("add_charge")}
         </button>
       </div>
+
+      <ErrorBanner error={mutationError} />
 
       {showForm && (
         <form
@@ -59,7 +67,7 @@ export function ChargesSection({ leaseId }: { leaseId: number }) {
         >
           <input
             type="text"
-            placeholder="Description"
+            placeholder={t("description")}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             className="border rounded px-3 py-2 text-sm"
@@ -67,45 +75,27 @@ export function ChargesSection({ leaseId }: { leaseId: number }) {
           />
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium mb-1">Amount (cents)</label>
+              <label className="block text-xs font-medium mb-1">{t("amount_cents")}</label>
               <input
                 type="number"
-                value={amountCents || ""}
-                onChange={(e) => setAmountCents(Number(e.target.value))}
+                step="0.01"
+                value={amountEgp}
+                onChange={(e) => setAmountEgp(e.target.value)}
                 className="border rounded px-3 py-2 text-sm w-full"
                 required
               />
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1">Category</label>
+              <label className="block text-xs font-medium mb-1">{t("category")}</label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 className="border rounded px-3 py-2 text-sm w-full"
               >
-                <option value="rent">Rent</option>
-                <option value="late_fee">Late Fee</option>
-                <option value="other">Other</option>
+                <option value="rent">{t("rent_category")}</option>
+                <option value="late_fee">{t("late_fee_category")}</option>
+                <option value="other">{t("other_category")}</option>
               </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium mb-1">Charge Date</label>
-              <input
-                type="date"
-                value={chargeDate}
-                onChange={(e) => setChargeDate(e.target.value)}
-                className="border rounded px-3 py-2 text-sm w-full"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium mb-1">Due Date</label>
-              <input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="border rounded px-3 py-2 text-sm w-full"
-              />
             </div>
           </div>
           <div className="flex gap-2">
@@ -114,14 +104,14 @@ export function ChargesSection({ leaseId }: { leaseId: number }) {
               disabled={createCharge.isPending}
               className="bg-green-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50"
             >
-              {createCharge.isPending ? "Saving..." : "Save"}
+              {createCharge.isPending ? t("saving") : t("save")}
             </button>
             <button
               type="button"
               onClick={() => setShowForm(false)}
               className="text-gray-600 text-sm"
             >
-              Cancel
+              {t("cancel")}
             </button>
           </div>
         </form>
@@ -129,7 +119,7 @@ export function ChargesSection({ leaseId }: { leaseId: number }) {
 
       <div className="space-y-3">
         {charges?.length === 0 && (
-          <p className="text-gray-500 text-sm">No charges yet.</p>
+          <p className="text-gray-500 text-sm">{t("no_charges_yet")}</p>
         )}
         {charges?.map((c) => (
           <div key={c.id} className="bg-white rounded shadow-sm p-3">
@@ -137,20 +127,20 @@ export function ChargesSection({ leaseId }: { leaseId: number }) {
               <div className="flex items-center gap-3">
                 <span className="font-medium text-sm">{c.description}</span>
                 <span className="text-xs text-gray-500">
-                  {new Date(c.charge_date).toLocaleDateString()}
-                  {c.due_date && ` — Due: ${new Date(c.due_date).toLocaleDateString()}`}
+                  {new Date(c.charge_date).toLocaleDateString(language === "ar" ? "ar-EG" : "en-US")}
+                  {c.due_date && ` — ${t("due_date")}: ${new Date(c.due_date).toLocaleDateString(language === "ar" ? "ar-EG" : "en-US")}`}
                 </span>
                 <StatusPill status={c.status} />
               </div>
               <div className="flex items-center gap-4 text-sm">
                 <span>
-                  <Money cents={c.amount_cents} /> charged
+                  <Money cents={c.amount_cents} /> {t("charged")}
                 </span>
                 <span>
-                  <Money cents={c.paid_cents} /> paid
+                  <Money cents={c.paid_cents} /> {t("paid")}
                 </span>
                 <span className="font-medium">
-                  Balance: <Money cents={c.balance_cents} />
+                  {t("balance")}: <Money cents={c.balance_cents} />
                 </span>
                 <button
                   onClick={() =>
@@ -158,16 +148,25 @@ export function ChargesSection({ leaseId }: { leaseId: number }) {
                   }
                   className="text-blue-600 hover:underline text-xs"
                 >
-                  {expandedCharge === c.id ? "Hide" : "Payments"}
+                  {expandedCharge === c.id ? t("hide") : t("payments")}
                 </button>
                 <button
                   onClick={() => {
-                    if (window.confirm("Delete this charge?"))
-                      deleteCharge.mutate({ leaseId, chargeId: c.id });
+                    if (window.confirm(t("confirm_delete_charge"))) {
+                      setMutationError(null);
+                      deleteCharge.mutate(
+                        { leaseId, chargeId: c.id },
+                        {
+                          onError: (err: any) => {
+                            setMutationError(err?.response?.data?.detail || err?.message || t("operation_failed"));
+                          },
+                        }
+                      );
+                    }
                   }}
                   className="text-red-600 hover:underline text-xs"
                 >
-                  Delete
+                  {t("delete")}
                 </button>
               </div>
             </div>
@@ -180,3 +179,4 @@ export function ChargesSection({ leaseId }: { leaseId: number }) {
     </div>
   );
 }
+

@@ -4,6 +4,7 @@ import { useTenants } from "../hooks/useTenants";
 import { useCreatePayment } from "../hooks/usePayments";
 import { Money } from "../components/Money";
 import { StatusPill } from "../components/StatusPill";
+import { ErrorBanner } from "../components/ErrorBanner";
 import { useLanguage } from "../context/LanguageContext";
 
 export function ChargesList() {
@@ -23,6 +24,7 @@ export function ChargesList() {
   const deleteCharge = useDeleteCharge();
   const deleteGeneralCharge = useDeleteGeneralCharge();
   const { language, t } = useLanguage();
+  const [mutationError, setMutationError] = useState<string | null>(null);
 
   const [paymentChargeId, setPaymentChargeId] = useState<number | null>(null);
   const [amountEgp, setAmountEgp] = useState("");
@@ -32,6 +34,7 @@ export function ChargesList() {
 
   const handlePayment = (e: React.FormEvent, chargeId: number) => {
     e.preventDefault();
+    setMutationError(null);
     createPayment.mutate(
       {
         chargeId,
@@ -48,6 +51,9 @@ export function ChargesList() {
           setMethod("");
           setNotes("");
         },
+        onError: (err: any) => {
+          setMutationError(err?.response?.data?.detail || err?.message || t("operation_failed"));
+        },
       }
     );
   };
@@ -57,6 +63,8 @@ export function ChargesList() {
   return (
     <div>
       <h2 className="text-xl font-semibold mb-6">{t("charges")}</h2>
+
+      <ErrorBanner error={mutationError} />
 
       <div className="flex flex-wrap gap-3 mb-4">
         <select
@@ -188,13 +196,22 @@ export function ChargesList() {
                         <button
                           onClick={() => {
                             if (window.confirm(t("confirm_delete_charge"))) {
+                              setMutationError(null);
                               if (c.lease_id) {
                                 deleteCharge.mutate({
                                   leaseId: c.lease_id,
                                   chargeId: c.id,
+                                }, {
+                                  onError: (err: any) => {
+                                    setMutationError(err?.response?.data?.detail || err?.message || t("operation_failed"));
+                                  },
                                 });
                               } else {
-                                deleteGeneralCharge.mutate(c.id);
+                                deleteGeneralCharge.mutate(c.id, {
+                                  onError: (err: any) => {
+                                    setMutationError(err?.response?.data?.detail || err?.message || t("operation_failed"));
+                                  },
+                                });
                               }
                             }
                           }}

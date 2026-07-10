@@ -1,34 +1,42 @@
 import { useState } from "react";
 import { Money } from "../Money";
+import { ErrorBanner } from "../ErrorBanner";
 import { useChargePayments, useCreatePayment, useDeletePayment } from "../../hooks/usePayments";
+import { useLanguage } from "../../context/LanguageContext";
+import { getLocalDateString } from "../../utils/dateUtils";
 
 export function PaymentsSection({ chargeId }: { chargeId: number }) {
   const { data: payments } = useChargePayments(chargeId);
   const createPayment = useCreatePayment();
   const deletePayment = useDeletePayment();
+  const { language, t } = useLanguage();
   const [showForm, setShowForm] = useState(false);
-  const [amountCents, setAmountCents] = useState(0);
-  const [paymentDate, setPaymentDate] = useState("");
+  const [amountEgp, setAmountEgp] = useState("");
   const [method, setMethod] = useState("");
   const [notes, setNotes] = useState("");
+  const [mutationError, setMutationError] = useState<string | null>(null);
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
+    const today = getLocalDateString();
+    setMutationError(null);
     createPayment.mutate(
       {
         chargeId,
-        amount_cents: amountCents,
-        payment_date: paymentDate,
+        amount_cents: Math.round(Number(amountEgp) * 100),
+        payment_date: today,
         method: method || undefined,
         notes: notes || undefined,
       },
       {
         onSuccess: () => {
           setShowForm(false);
-          setAmountCents(0);
-          setPaymentDate("");
+          setAmountEgp("");
           setMethod("");
           setNotes("");
+        },
+        onError: (err: any) => {
+          setMutationError(err?.response?.data?.detail || err?.message || t("operation_failed"));
         },
       }
     );
@@ -37,14 +45,16 @@ export function PaymentsSection({ chargeId }: { chargeId: number }) {
   return (
     <div className="mt-3 pt-3 border-t">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-medium text-gray-500">Payments</span>
+        <span className="text-xs font-medium text-gray-500">{t("payments")}</span>
         <button
           onClick={() => setShowForm(!showForm)}
           className="text-blue-600 hover:underline text-xs"
         >
-          Log Payment
+          {t("log_payment")}
         </button>
       </div>
+
+      <ErrorBanner error={mutationError} />
 
       {showForm && (
         <form
@@ -53,29 +63,24 @@ export function PaymentsSection({ chargeId }: { chargeId: number }) {
         >
           <input
             type="number"
-            placeholder="Amount (cents)"
-            value={amountCents || ""}
-            onChange={(e) => setAmountCents(Number(e.target.value))}
+            step="0.01"
+            placeholder={t("amount_cents")}
+            value={amountEgp}
+            onChange={(e) => setAmountEgp(e.target.value)}
             className="border rounded px-2 py-1 text-xs w-32"
             required
           />
-          <input
-            type="date"
-            value={paymentDate}
-            onChange={(e) => setPaymentDate(e.target.value)}
-            className="border rounded px-2 py-1 text-xs"
-            required
-          />
+
           <input
             type="text"
-            placeholder="Method"
+            placeholder={t("method")}
             value={method}
             onChange={(e) => setMethod(e.target.value)}
             className="border rounded px-2 py-1 text-xs w-24"
           />
           <input
             type="text"
-            placeholder="Notes"
+            placeholder={t("notes")}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             className="border rounded px-2 py-1 text-xs w-32"
@@ -85,14 +90,14 @@ export function PaymentsSection({ chargeId }: { chargeId: number }) {
             disabled={createPayment.isPending}
             className="bg-green-600 text-white rounded px-3 py-1 text-xs disabled:opacity-50"
           >
-            Save
+            {t("save")}
           </button>
         </form>
       )}
 
       <div className="space-y-1">
         {payments?.length === 0 && (
-          <p className="text-xs text-gray-400">No payments yet.</p>
+          <p className="text-xs text-gray-400">{t("no_payments")}</p>
         )}
         {payments?.map((p) => (
           <div
@@ -100,19 +105,25 @@ export function PaymentsSection({ chargeId }: { chargeId: number }) {
             className="flex items-center justify-between text-xs bg-gray-50 rounded px-2 py-1"
           >
             <span>
-              <Money cents={p.amount_cents} /> on{" "}
-              {new Date(p.payment_date).toLocaleDateString()}
+              <Money cents={p.amount_cents} /> {t("on")}{" "}
+              {new Date(p.payment_date).toLocaleDateString(language === "ar" ? "ar-EG" : "en-US")}
               {p.method && ` — ${p.method}`}
               {p.notes && ` — ${p.notes}`}
             </span>
             <button
               onClick={() => {
-                if (window.confirm("Delete this payment?"))
-                  deletePayment.mutate(p.id);
+                if (window.confirm(t("confirm_delete_payment"))) {
+                  setMutationError(null);
+                  deletePayment.mutate(p.id, {
+                    onError: (err: any) => {
+                      setMutationError(err?.response?.data?.detail || err?.message || t("operation_failed"));
+                    },
+                  });
+                }
               }}
               className="text-red-600 hover:underline"
             >
-              Delete
+              {t("delete")}
             </button>
           </div>
         ))}
@@ -120,3 +131,4 @@ export function PaymentsSection({ chargeId }: { chargeId: number }) {
     </div>
   );
 }
+

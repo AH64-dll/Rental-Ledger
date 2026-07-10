@@ -1,30 +1,38 @@
 import { useState } from "react";
 import { Money } from "../Money";
+import { ErrorBanner } from "../ErrorBanner";
 import { useLeaseDeposits, useCreateDeposit } from "../../hooks/useDeposits";
+import { useLanguage } from "../../context/LanguageContext";
 
 export function DepositsSection({ leaseId }: { leaseId: number }) {
   const { data: deposits } = useLeaseDeposits(leaseId);
   const createDeposit = useCreateDeposit();
+  const { language, t } = useLanguage();
   const [showForm, setShowForm] = useState(false);
-  const [amountCents, setAmountCents] = useState(0);
+  const [amountEgp, setAmountEgp] = useState("");
   const [collectedDate, setCollectedDate] = useState("");
   const [notes, setNotes] = useState("");
+  const [mutationError, setMutationError] = useState<string | null>(null);
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
+    setMutationError(null);
     createDeposit.mutate(
       {
         leaseId,
-        amount_held_cents: amountCents,
+        amount_held_cents: Math.round(Number(amountEgp) * 100),
         collected_date: collectedDate,
         notes: notes || undefined,
       },
       {
         onSuccess: () => {
           setShowForm(false);
-          setAmountCents(0);
+          setAmountEgp("");
           setCollectedDate("");
           setNotes("");
+        },
+        onError: (err: any) => {
+          setMutationError(err?.response?.data?.detail || err?.message || t("operation_failed"));
         },
       }
     );
@@ -33,14 +41,16 @@ export function DepositsSection({ leaseId }: { leaseId: number }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-medium">Deposits</h3>
+        <h3 className="text-lg font-medium">{t("deposits")}</h3>
         <button
           onClick={() => setShowForm(!showForm)}
           className="bg-blue-600 text-white rounded px-4 py-2 text-sm font-medium"
         >
-          Add Deposit
+          {t("add_deposit")}
         </button>
       </div>
+
+      <ErrorBanner error={mutationError} />
 
       {showForm && (
         <form
@@ -49,9 +59,10 @@ export function DepositsSection({ leaseId }: { leaseId: number }) {
         >
           <input
             type="number"
-            placeholder="Amount (cents)"
-            value={amountCents || ""}
-            onChange={(e) => setAmountCents(Number(e.target.value))}
+            step="0.01"
+            placeholder={t("amount_cents")}
+            value={amountEgp}
+            onChange={(e) => setAmountEgp(e.target.value)}
             className="border rounded px-3 py-2 text-sm"
             required
           />
@@ -64,7 +75,7 @@ export function DepositsSection({ leaseId }: { leaseId: number }) {
           />
           <input
             type="text"
-            placeholder="Notes (optional)"
+            placeholder={t("notes_optional")}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             className="border rounded px-3 py-2 text-sm"
@@ -75,14 +86,14 @@ export function DepositsSection({ leaseId }: { leaseId: number }) {
               disabled={createDeposit.isPending}
               className="bg-green-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50"
             >
-              {createDeposit.isPending ? "Saving..." : "Save"}
+              {createDeposit.isPending ? t("saving") : t("save")}
             </button>
             <button
               type="button"
               onClick={() => setShowForm(false)}
               className="text-gray-600 text-sm"
             >
-              Cancel
+              {t("cancel")}
             </button>
           </div>
         </form>
@@ -90,7 +101,7 @@ export function DepositsSection({ leaseId }: { leaseId: number }) {
 
       <div className="space-y-3">
         {deposits?.length === 0 && (
-          <p className="text-gray-500 text-sm">No deposits yet.</p>
+          <p className="text-gray-500 text-sm">{t("no_deposits")}</p>
         )}
         {deposits?.map((d) => (
           <div
@@ -102,7 +113,7 @@ export function DepositsSection({ leaseId }: { leaseId: number }) {
                 <Money cents={d.amount_held_cents} />
               </span>
               <span className="text-xs text-gray-500 ml-3">
-                Collected: {new Date(d.collected_date).toLocaleDateString()}
+                {t("collected")}: {new Date(d.collected_date).toLocaleDateString(language === "ar" ? "ar-EG" : "en-US")}
                 {d.notes && ` — ${d.notes}`}
               </span>
             </div>
@@ -112,3 +123,4 @@ export function DepositsSection({ leaseId }: { leaseId: number }) {
     </div>
   );
 }
+

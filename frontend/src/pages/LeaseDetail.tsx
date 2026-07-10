@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { useLease } from "../hooks/useLeases";
 import { Money } from "../components/Money";
 import { ChargesSection } from "../components/lease/ChargesSection";
 import { DepositsSection } from "../components/lease/DepositsSection";
+import { useLanguage } from "../context/LanguageContext";
 
 type Tab = "charges" | "deposits";
 
@@ -12,28 +13,33 @@ export function LeaseDetail() {
   const leaseId = id ? Number(id) : null;
   const { data: lease, isLoading, error } = useLease(leaseId);
   const [tab, setTab] = useState<Tab>("charges");
+  const { language, t } = useLanguage();
 
-  if (isLoading) return <p className="text-gray-500">Loading...</p>;
-  if (error) return <p className="text-red-600">Failed to load lease.</p>;
+  if (isLoading) return <p className="text-gray-500">{t("loading")}</p>;
+  if (error) return <p className="text-red-600">{t("failed_load_lease")}</p>;
   if (!lease) return null;
 
   return (
     <div>
+      <div className="mb-4">
+        <Link to=".." className="text-blue-600 hover:underline text-sm">← {t("back")}</Link>
+      </div>
+
       <div className="bg-white rounded shadow-sm p-4 mb-6">
         <h2 className="text-xl font-semibold mb-2">
           {lease.tenant_name} — {lease.unit_name}
         </h2>
         <div className="text-sm text-gray-600 flex flex-wrap gap-x-6 gap-y-1">
           <span>
-            Period: {new Date(lease.start_date).toLocaleDateString()} —{" "}
-            {new Date(lease.end_date).toLocaleDateString()}
+            {t("period")}: {new Date(lease.start_date).toLocaleDateString(language === "ar" ? "ar-EG" : "en-US")} —{" "}
+            {new Date(lease.end_date).toLocaleDateString(language === "ar" ? "ar-EG" : "en-US")}
           </span>
           <span>
-            Rent: <Money cents={lease.monthly_rent_cents} /> / month
+            {t("rent")}: <Money cents={lease.monthly_rent_cents} /> / {t("month_short")}
           </span>
-          <span>Due day: {lease.rent_due_day_of_month}</span>
-          <span>Deposit: <Money cents={lease.security_deposit_cents} /></span>
-          <span>Late fee: {lease.late_fee_percent}%</span>
+          <span>{t("due_day_label")}: {lease.rent_due_day_of_month}</span>
+          <span>{t("deposit_label")}: <Money cents={lease.security_deposit_cents} /></span>
+          <span>{t("late_fee_label")}: {lease.late_fee_percent}%</span>
         </div>
       </div>
 
@@ -46,7 +52,7 @@ export function LeaseDetail() {
               : "text-gray-500"
           }`}
         >
-          Charges & Payments
+          {t("charges_payments")}
         </button>
         <button
           onClick={() => setTab("deposits")}
@@ -56,7 +62,7 @@ export function LeaseDetail() {
               : "text-gray-500"
           }`}
         >
-          Deposits
+          {t("deposits")}
         </button>
       </div>
 
