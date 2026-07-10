@@ -4,6 +4,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { useToast } from "../ui/Toast";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
+import { ErrorBanner } from "../ErrorBanner";
 
 interface DebtFormProps {
   tenantId: number;
@@ -43,14 +44,7 @@ export function DebtForm({ tenantId, onSuccess }: DebtFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      {error && (
-        <div
-          role="alert"
-          className="flex items-start gap-2 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg px-3 py-2 text-sm"
-        >
-          <span>{error}</span>
-        </div>
-      )}
+      {error && <ErrorBanner error={error} />}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Input
           label={t("description")}

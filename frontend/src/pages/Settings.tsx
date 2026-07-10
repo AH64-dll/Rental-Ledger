@@ -6,6 +6,7 @@ import { PageHeader } from "../components/ui/PageHeader";
 import { Card, CardBody, CardHeader } from "../components/ui/Card";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
+import { ErrorBanner } from "../components/ErrorBanner";
 import { User as UserIcon } from "../components/ui/AppIcon";
 
 export function Settings() {
@@ -92,14 +93,7 @@ export function Settings() {
           </h3>
         </CardHeader>
         <CardBody>
-          {error && (
-            <div
-              role="alert"
-              className="mb-4 flex items-start gap-2 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg px-3 py-2 text-sm"
-            >
-              <span>{error}</span>
-            </div>
-          )}
+          {error && <ErrorBanner error={error} />}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input

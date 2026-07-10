@@ -167,7 +167,7 @@ export function LeasesList() {
 
       <Card>
         {isLoading ? (
-          <div className="p-6 space-y-3">
+          <div className="p-6 space-y-3" aria-busy="true" aria-live="polite">
             {[1, 2, 3].map((i) => (<Skeleton key={i} className="h-10 w-full" />))}
           </div>
         ) : filtered.length > 0 ? (

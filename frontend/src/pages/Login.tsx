@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useLogin } from "../hooks/useAuth";
 import { useLanguage } from "../context/LanguageContext";
 import { Card, CardBody } from "../components/ui/Card";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
-import { AlertCircle } from "../components/ui/AppIcon";
+import { ErrorBanner } from "../components/ErrorBanner";
 
 export function Login() {
   const navigate = useNavigate();
@@ -15,9 +15,17 @@ export function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [redirecting, setRedirecting] = useState<boolean>(
+    () => typeof window !== "undefined" && !!localStorage.getItem("token")
+  );
 
-  const token = localStorage.getItem("token");
-  if (token) return <Navigate to="/dashboard" replace />;
+  useEffect(() => {
+    if (!redirecting && typeof window !== "undefined" && localStorage.getItem("token")) {
+      setRedirecting(true);
+    }
+  }, [redirecting]);
+
+  if (redirecting) return <Navigate to="/dashboard" replace />;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +38,7 @@ export function Login() {
           const redirect = searchParams.get("redirect") || "/dashboard";
           navigate(redirect, { replace: true });
         },
-        onError: () => setError(t("invalid_credentials")),
+        onError: (err: unknown) => setError(String((err as { response?: { data?: { detail?: string } }; message?: string })?.response?.data?.detail || (err as { message?: string })?.message || t("invalid_credentials"))),
       }
     );
   };
@@ -76,15 +84,7 @@ export function Login() {
                 autoComplete="current-password"
                 required
               />
-              {error && (
-                <div
-                  role="alert"
-                  className="flex items-start gap-2 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg px-3 py-2 text-sm"
-                >
-                  <AlertCircle size={16} className="shrink-0 mt-0.5" />
-                  <span>{error}</span>
-                </div>
-              )}
+              {error && <ErrorBanner error={error} />}
               <Button type="submit" className="w-full" loading={login.isPending}>
                 {login.isPending ? t("signing_in") : t("sign_in")}
               </Button>

@@ -44,7 +44,11 @@ export function Dashboard() {
         })}
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+        aria-busy={isLoading}
+        aria-live="polite"
+      >
         <StatCard
           icon={<FileText size={20} />}
           label={t("active_leases")}
@@ -82,8 +86,11 @@ export function Dashboard() {
           {isLoading ? (
             <Skeleton className="h-7 w-40" />
           ) : data ? (
-            <p className="text-2xl font-semibold text-slate-900" aria-label={`${data.expiring_leases} ${t(data.expiring_leases === 1 ? "lease_count_singular" : "lease_count_plural")}`}>
-              {data.expiring_leases}{" "}
+            <p
+              className="text-2xl font-semibold text-slate-900"
+              aria-label={`${data.expiring_leases} ${t(data.expiring_leases === 1 ? "lease_count_singular" : "lease_count_plural")}`}
+            >
+              <span aria-hidden="true">{data.expiring_leases} </span>
               <span className="text-sm font-normal text-slate-500">
                 {t(data.expiring_leases === 1 ? "lease_count_singular" : "lease_count_plural")}
               </span>

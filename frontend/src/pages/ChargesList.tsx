@@ -148,7 +148,7 @@ export function ChargesList() {
         </div>
 
         {isLoading ? (
-          <div className="p-6 space-y-3">
+          <div className="p-6 space-y-3" aria-busy="true" aria-live="polite">
             {[1, 2, 3].map((i) => (<Skeleton key={i} className="h-10 w-full" />))}
           </div>
         ) : data && data.length > 0 ? (
@@ -210,9 +210,11 @@ export function ChargesList() {
                       </form>
                     ) : (
                       <div className="flex items-center gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => setPaymentChargeId(c.id)}>
-                          {t("pay")}
-                        </Button>
+                        {c.balance_cents > 0 && c.status !== "paid" && (
+                          <Button size="sm" variant="ghost" onClick={() => setPaymentChargeId(c.id)}>
+                            {t("pay")}
+                          </Button>
+                        )}
                         <button
                           onClick={() => handleDelete(c)}
                           aria-label={t("delete")}
