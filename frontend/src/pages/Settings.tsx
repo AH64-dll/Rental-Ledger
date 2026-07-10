@@ -6,7 +6,7 @@ import { PageHeader } from "../components/ui/PageHeader";
 import { Card, CardBody, CardHeader } from "../components/ui/Card";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
-import { User } from "../components/ui/AppIcon";
+import { User as UserIcon } from "../components/ui/AppIcon";
 
 export function Settings() {
   const { data: user } = useMe();
@@ -63,7 +63,7 @@ export function Settings() {
         <CardHeader>
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center">
-              <User size={20} />
+              <UserIcon size={20} />
             </div>
             <div>
               <h3 className="text-base font-semibold text-slate-900">{t("account")}</h3>
