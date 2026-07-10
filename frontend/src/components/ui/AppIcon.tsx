@@ -14,6 +14,8 @@ const base = (size: number) => ({
   strokeWidth: 1.75,
   strokeLinecap: "round" as const,
   strokeLinejoin: "round" as const,
+  "aria-hidden": true,
+  focusable: false,
 });
 
 export function Home({ className, size = 20, ...rest }: IconProps) {
