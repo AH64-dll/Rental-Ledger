@@ -1,12 +1,10 @@
-from datetime import date
-
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth import current_user
 from app.db import get_db
-from app.models import Charge, Tenant
+from app.models import Charge
 from app.schemas.charges import ChargeResponse
 from app.services.balance import (
     compute_paid_cents,
@@ -40,7 +38,7 @@ def _build_charge_response(charge: Charge, paid_cents: int) -> ChargeResponse:
 @router.get("/", response_model=list[ChargeResponse])
 def list_charges_flat(
     tenant_id: int | None = Query(None),
-    status: str | None = Query(None),
+    status_filter: str | None = Query(None, alias="status"),
     overdue: bool | None = Query(None),
     db: Session = Depends(get_db),
     _: str = Depends(current_user),
@@ -57,7 +55,7 @@ def list_charges_flat(
         balance = compute_balance_cents(c.amount_cents, paid)
         st = derive_charge_status(balance, paid, c.due_date)
 
-        if status is not None and st != status:
+        if status_filter is not None and st != status_filter:
             continue
         if overdue and st != "overdue":
             continue

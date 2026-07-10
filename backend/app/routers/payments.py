@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.auth import current_user
 from app.db import get_db
 from app.models import Charge, Payment
-from app.schemas.payments import PaymentCreate, PaymentResponse, PaymentUpdate
+from app.schemas.payments import PaymentCreate, PaymentResponse
 from app.services.balance import compute_paid_cents
 
 router = APIRouter(prefix="/charges/{charge_id}/payments", tags=["payments"])

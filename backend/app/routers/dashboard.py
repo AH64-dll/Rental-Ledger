@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import current_user
 from app.db import get_db
-from app.models import Charge, Deposit, Lease, Payment
+from app.models import Charge, Deposit, Lease
 from app.schemas.dashboard import DashboardResponse
 from app.services.balance import compute_balance_cents, compute_paid_cents
 

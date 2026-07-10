@@ -38,7 +38,7 @@ def list_leases(
         .options(joinedload(Lease.tenant), joinedload(Lease.unit))
         .order_by(Lease.created_at.desc())
     ).unique().scalars().all()
-    return [_build_lease_response(l) for l in leases]
+    return [_build_lease_response(lease) for lease in leases]
 
 
 @router.post("/", response_model=LeaseResponse, status_code=status.HTTP_201_CREATED)

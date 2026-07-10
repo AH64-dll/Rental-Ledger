@@ -1,4 +1,7 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -7,9 +10,6 @@ from app.db import get_db
 from app.models import Deposit, Lease
 
 router = APIRouter(prefix="/leases/{lease_id}/deposits", tags=["deposits"])
-
-from pydantic import BaseModel
-from datetime import date
 
 
 class DepositCreate(BaseModel):
