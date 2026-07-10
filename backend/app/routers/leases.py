@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from app.auth import current_user
 from app.db import get_db
-from app.models import Charge, Lease, LeaseStatus, Tenant, Unit
+from app.models import Charge, Lease, LeaseStatus, Tenant, Property
 from app.schemas.leases import LeaseCreate, LeaseResponse, LeaseUpdate
 from app.services.lease import lazy_expire_leases
 
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/leases", tags=["leases"])
 def _build_lease_response(lease: Lease) -> LeaseResponse:
     return LeaseResponse(
         id=lease.id,
-        unit_id=lease.unit_id,
+        property_id=lease.property_id,
         tenant_id=lease.tenant_id,
         start_date=lease.start_date,
         end_date=lease.end_date,
@@ -24,22 +24,22 @@ def _build_lease_response(lease: Lease) -> LeaseResponse:
         security_deposit_cents=lease.security_deposit_cents,
         status=lease.status.value if hasattr(lease.status, "value") else lease.status,
         tenant_name=lease.tenant.name if lease.tenant else "",
-        unit_name=lease.unit.name if lease.unit else "",
+        property_name=lease.property.name if lease.property else "",
         created_at=lease.created_at,
     )
 
 
 @router.get("/", response_model=list[LeaseResponse])
 def list_leases(
-    tenant_id: int | None = Query(None),
     db: Session = Depends(get_db),
     _: str = Depends(current_user),
 ) -> list[LeaseResponse]:
     lazy_expire_leases(db)
-    q = select(Lease).options(joinedload(Lease.tenant), joinedload(Lease.unit))
-    if tenant_id is not None:
-        q = q.where(Lease.tenant_id == tenant_id)
-    leases = db.execute(q.order_by(Lease.created_at.desc())).unique().scalars().all()
+    leases = db.execute(
+        select(Lease)
+        .options(joinedload(Lease.tenant), joinedload(Lease.property))
+        .order_by(Lease.created_at.desc())
+    ).unique().scalars().all()
     return [_build_lease_response(lease) for lease in leases]
 
 
@@ -49,16 +49,16 @@ def create_lease(
     db: Session = Depends(get_db),
     _: str = Depends(current_user),
 ) -> LeaseResponse:
-    unit = db.get(Unit, body.unit_id)
-    if unit is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unit not found")
+    property_obj = db.get(Property, body.property_id)
+    if property_obj is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     tenant = db.get(Tenant, body.tenant_id)
     if tenant is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
 
     conflict = db.execute(
         select(Lease).where(
-            Lease.unit_id == body.unit_id,
+            Lease.property_id == body.property_id,
             Lease.status == LeaseStatus.ACTIVE,
             Lease.start_date <= body.end_date,
             Lease.end_date >= body.start_date,
@@ -67,11 +67,11 @@ def create_lease(
     if conflict:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Unit is already occupied during this period.",
+            detail="Property is already occupied during this period.",
         )
 
     lease = Lease(
-        unit_id=body.unit_id,
+        property_id=body.property_id,
         tenant_id=body.tenant_id,
         start_date=body.start_date,
         end_date=body.end_date,
@@ -95,7 +95,7 @@ def get_lease(
     lazy_expire_leases(db)
     lease = db.execute(
         select(Lease)
-        .options(joinedload(Lease.tenant), joinedload(Lease.unit))
+        .options(joinedload(Lease.tenant), joinedload(Lease.property))
         .where(Lease.id == lease_id)
     ).unique().scalar_one_or_none()
     if lease is None:
