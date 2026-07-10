@@ -1,28 +1,36 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  useTenants,
-  useCreateTenant,
-  useDeleteTenant,
-} from "../hooks/useTenants";
+import { useTenants, useCreateTenant, useDeleteTenant } from "../hooks/useTenants";
 import { useLanguage } from "../context/LanguageContext";
-import { ErrorBanner } from "../components/ErrorBanner";
+import { useToast } from "../components/ui/Toast";
+import { useConfirm } from "../components/ui/ConfirmDialog";
+import { PageHeader } from "../components/ui/PageHeader";
+import { Card } from "../components/ui/Card";
+import { Button } from "../components/ui/Button";
+import { Modal } from "../components/ui/Modal";
+import { Input } from "../components/ui/Input";
+import { Table, THead, TBody, TR, TH, TD } from "../components/ui/Table";
+import { EmptyState } from "../components/ui/EmptyState";
+import { Skeleton } from "../components/ui/Skeleton";
+import { Plus, Users, Trash2, ChevronLeft, ChevronRight } from "../components/ui/AppIcon";
 
 export function TenantsList() {
   const { data, isLoading, error } = useTenants();
   const createMutation = useCreateTenant();
   const deleteMutation = useDeleteTenant();
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
+  const toast = useToast();
+  const { confirm } = useConfirm();
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
-  const [mutationError, setMutationError] = useState<string | null>(null);
+
+  const Chevron = language === "ar" ? ChevronLeft : ChevronRight;
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    setMutationError(null);
     createMutation.mutate(
       {
         name,
@@ -37,139 +45,151 @@ export function TenantsList() {
           setEmail("");
           setPhone("");
           setNotes("");
+          toast.success(t("tenant_created"));
         },
-        onError: (err: any) => {
-          setMutationError(err?.response?.data?.detail || err?.message || t("operation_failed"));
-        },
+        onError: (err: { response?: { data?: { detail?: string } }; message?: string }) =>
+          toast.error(err?.response?.data?.detail || err?.message || t("operation_failed")),
       }
     );
   };
 
-  const handleDelete = (id: number) => {
-    if (window.confirm(t("confirm_delete_tenant"))) {
-      setMutationError(null);
-      deleteMutation.mutate(id, {
-        onError: (err: any) => {
-          setMutationError(err?.response?.data?.detail || err?.message || t("operation_failed"));
-        },
-      });
-    }
+  const handleDelete = async (id: number) => {
+    const ok = await confirm({
+      title: t("delete_confirm_title"),
+      message: t("confirm_delete_tenant"),
+      confirmLabel: t("delete"),
+      variant: "danger",
+    });
+    if (!ok) return;
+    deleteMutation.mutate(id, {
+      onSuccess: () => toast.success(t("tenant_deleted")),
+      onError: (err: { response?: { data?: { detail?: string } }; message?: string }) =>
+        toast.error(err?.response?.data?.detail || err?.message || t("operation_failed")),
+    });
   };
 
-  if (isLoading) return <p className="text-gray-500">{t("loading")}</p>;
-  if (error) return <p className="text-red-600">{t("failed_load_tenants")}</p>;
+  if (error) {
+    return (
+      <div>
+        <PageHeader title={t("tenants")} description={t("tenants_desc")} />
+        <Card>
+          <div className="p-6 text-sm text-rose-600">{t("failed_load_tenants")}</div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold">{t("tenants")}</h2>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="bg-blue-600 text-white rounded px-4 py-2 text-sm font-medium"
-        >
-          {t("add_tenant")}
-        </button>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title={t("tenants")}
+        description={t("tenants_desc")}
+        actions={
+          <Button leftIcon={<Plus size={16} />} onClick={() => setShowForm(true)}>
+            {t("add_tenant")}
+          </Button>
+        }
+      />
 
-      <ErrorBanner error={mutationError} />
+      <Card>
+        {isLoading ? (
+          <div className="p-6 space-y-3">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        ) : data && data.length > 0 ? (
+          <Table>
+            <THead>
+              <TR>
+                <TH>{t("name")}</TH>
+                <TH>{t("email")}</TH>
+                <TH>{t("phone")}</TH>
+                <TH className="w-24">{t("actions")}</TH>
+              </TR>
+            </THead>
+            <TBody>
+              {data.map((tn) => (
+                <TR key={tn.id}>
+                  <TD>
+                    <Link
+                      to={`/tenants/${tn.id}`}
+                      className="font-medium text-slate-900 hover:text-indigo-600 transition-colors inline-flex items-center gap-1"
+                    >
+                      {tn.name}
+                      <Chevron size={14} className="text-slate-400" />
+                    </Link>
+                  </TD>
+                  <TD className="text-slate-500">{tn.email || "—"}</TD>
+                  <TD className="text-slate-500">{tn.phone || "—"}</TD>
+                  <TD>
+                    <button
+                      onClick={() => handleDelete(tn.id)}
+                      aria-label={t("delete")}
+                      className="p-1.5 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </TD>
+                </TR>
+              ))}
+            </TBody>
+          </Table>
+        ) : (
+          <EmptyState
+            icon={<Users size={24} />}
+            title={t("no_tenants")}
+            description={t("add_first_tenant")}
+            action={
+              <Button leftIcon={<Plus size={16} />} onClick={() => setShowForm(true)}>
+                {t("add_tenant")}
+              </Button>
+            }
+          />
+        )}
+      </Card>
 
-      {showForm && (
-        <form
-          onSubmit={handleCreate}
-          className="bg-white rounded shadow-sm p-4 mb-6 flex flex-col gap-3"
-        >
-          <input
-            type="text"
-            placeholder={t("tenant_name")}
+      <Modal
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        title={t("add_tenant")}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setShowForm(false)}>
+              {t("cancel")}
+            </Button>
+            <Button onClick={handleCreate} loading={createMutation.isPending}>
+              {createMutation.isPending ? t("saving") : t("save")}
+            </Button>
+          </>
+        }
+      >
+        <form onSubmit={handleCreate} className="space-y-4">
+          <Input
+            label={t("tenant_name")}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="border rounded px-3 py-2 text-sm"
             required
+            autoFocus
           />
-          <input
+          <Input
+            label={`${t("email")} ${t("optional")}`}
             type="email"
-            placeholder={t("email_optional")}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="border rounded px-3 py-2 text-sm"
           />
-          <input
-            type="text"
-            placeholder={t("phone_optional")}
+          <Input
+            label={`${t("phone")} ${t("optional")}`}
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            className="border rounded px-3 py-2 text-sm"
           />
-          <input
-            type="text"
-            placeholder={t("notes_optional")}
+          <Input
+            label={`${t("notes")} ${t("optional")}`}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            className="border rounded px-3 py-2 text-sm"
           />
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={createMutation.isPending}
-              className="bg-green-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50"
-            >
-              {createMutation.isPending ? t("saving") : t("save")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowForm(false)}
-              className="text-gray-600 text-sm"
-            >
-              {t("cancel")}
-            </button>
-          </div>
         </form>
-      )}
-
-      <div className="bg-white rounded shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-start">
-            <tr>
-              <th className="px-4 py-3 font-medium text-start">{t("name")}</th>
-              <th className="px-4 py-3 font-medium text-start">{t("email")}</th>
-              <th className="px-4 py-3 font-medium text-start">{t("phone")}</th>
-              <th className="px-4 py-3 font-medium text-start w-24">{t("actions")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data?.length === 0 && (
-              <tr>
-                <td colSpan={4} className="px-4 py-6 text-center text-gray-500">
-                  {t("no_tenants")}
-                </td>
-              </tr>
-            )}
-            {data?.map((tRef) => (
-              <tr key={tRef.id} className="border-t">
-                <td className="px-4 py-3">
-                  <Link
-                    to={`/tenants/${tRef.id}`}
-                    className="text-blue-600 hover:underline"
-                  >
-                    {tRef.name}
-                  </Link>
-                </td>
-                <td className="px-4 py-3 text-gray-600">{tRef.email || "—"}</td>
-                <td className="px-4 py-3 text-gray-600">{tRef.phone || "—"}</td>
-                <td className="px-4 py-3">
-                  <button
-                    onClick={() => handleDelete(tRef.id)}
-                    className="text-red-600 hover:underline text-xs"
-                  >
-                    {t("delete")}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      </Modal>
     </div>
   );
 }
-

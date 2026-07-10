@@ -1,15 +1,29 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useTenant, useTenantBalance, useUpdateTenant } from "../hooks/useTenants";
 import { useAllCharges, useDeleteGeneralCharge } from "../hooks/useCharges";
 import { useCreatePayment } from "../hooks/usePayments";
 import { useLeases, useCreateLease } from "../hooks/useLeases";
 import { useProperties } from "../hooks/useProperties";
-import { useUnits } from "../hooks/useUnits";
 import { Money } from "../components/Money";
 import { StatusPill } from "../components/StatusPill";
-import { ErrorBanner } from "../components/ErrorBanner";
 import { useLanguage } from "../context/LanguageContext";
+import { useToast } from "../components/ui/Toast";
+import { useConfirm } from "../components/ui/ConfirmDialog";
+import { PageHeader } from "../components/ui/PageHeader";
+import { Card, CardBody, CardHeader } from "../components/ui/Card";
+import { Button } from "../components/ui/Button";
+import { Modal } from "../components/ui/Modal";
+import { Input } from "../components/ui/Input";
+import { Select } from "../components/ui/Select";
+import { Tabs } from "../components/ui/Tabs";
+import { Table, THead, TBody, TR, TH, TD } from "../components/ui/Table";
+import { EmptyState } from "../components/ui/EmptyState";
+import { Badge } from "../components/ui/Badge";
+import { Skeleton } from "../components/ui/Skeleton";
+import {
+  Plus, Edit, Trash2, Wallet, Mail, Phone, FileText, AlertCircle, Receipt,
+} from "../components/ui/AppIcon";
 import { DebtForm } from "../components/debts/DebtForm";
 import {
   getElapsedDuration,
@@ -24,30 +38,26 @@ export function TenantProfile() {
   const { data: balance } = useTenantBalance(tenantId);
   const { data: allCharges } = useAllCharges({ tenant_id: tenantId || undefined });
   const { data: leases } = useLeases(tenantId || undefined);
-  
+
   const updateMutation = useUpdateTenant();
   const deleteDebtMutation = useDeleteGeneralCharge();
   const createPaymentMutation = useCreatePayment();
   const createLeaseMutation = useCreateLease();
 
   const { language, t } = useLanguage();
+  const toast = useToast();
+  const { confirm } = useConfirm();
 
-  const [mutationError, setMutationError] = useState<string | null>(null);
-
-  const [editMode, setEditMode] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
 
   const [activeTab, setActiveTab] = useState<"leases" | "debts">("leases");
-
   const [showDebtForm, setShowDebtForm] = useState(false);
-
-  // Add Lease Form State
-  const [showLeaseForm, setShowLeaseForm] = useState(false);
+  const [leaseFormOpen, setLeaseFormOpen] = useState(false);
   const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
-  const [leaseUnitId, setLeaseUnitId] = useState<number | null>(null);
   const [leaseStartDate, setLeaseStartDate] = useState(getLocalDateString());
   const [leaseEndDate, setLeaseEndDate] = useState(getLocalOneYearLaterDateString());
   const [leaseMonthlyRentEgp, setLeaseMonthlyRentEgp] = useState("");
@@ -56,9 +66,7 @@ export function TenantProfile() {
   const [leaseSecurityDepositEgp, setLeaseSecurityDepositEgp] = useState("");
 
   const { data: properties } = useProperties();
-  const { data: units } = useUnits(selectedPropertyId);
 
-  // Inline Payment Form State
   const [paymentChargeId, setPaymentChargeId] = useState<number | null>(null);
   const [paymentAmountEgp, setPaymentAmountEgp] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
@@ -66,12 +74,41 @@ export function TenantProfile() {
   const personalDebts = allCharges?.filter((c) => c.lease_id === null) || [];
   const tenantLeases = leases || [];
 
+  const openEdit = () => {
+    if (!tenant) return;
+    setName(tenant.name);
+    setEmail(tenant.email || "");
+    setPhone(tenant.phone || "");
+    setNotes(tenant.notes || "");
+    setEditOpen(true);
+  };
+
+  const handleUpdate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tenantId) return;
+    updateMutation.mutate(
+      {
+        id: tenantId,
+        name: name || undefined,
+        email: email || undefined,
+        phone: phone || undefined,
+        notes: notes || undefined,
+      },
+      {
+        onSuccess: () => {
+          setEditOpen(false);
+          toast.success(t("tenant_updated"));
+        },
+        onError: (err: { response?: { data?: { detail?: string } }; message?: string }) =>
+          toast.error(err?.response?.data?.detail || err?.message || t("operation_failed")),
+      }
+    );
+  };
+
   const handlePayment = (e: React.FormEvent, chargeId: number) => {
     e.preventDefault();
     if (!paymentAmountEgp) return;
     const today = getLocalDateString();
-
-    setMutationError(null);
     createPaymentMutation.mutate(
       {
         chargeId,
@@ -84,560 +121,395 @@ export function TenantProfile() {
           setPaymentChargeId(null);
           setPaymentAmountEgp("");
           setPaymentMethod("");
+          toast.success(t("payment_logged"));
         },
-        onError: (err: any) => {
-          setMutationError(err?.response?.data?.detail || err?.message || t("operation_failed"));
-        },
+        onError: (err: { response?: { data?: { detail?: string } }; message?: string }) =>
+          toast.error(err?.response?.data?.detail || err?.message || t("operation_failed")),
       }
     );
   };
 
-  const handleDeleteDebt = (id: number) => {
-    if (window.confirm(t("confirm_delete_debt"))) {
-      setMutationError(null);
-      deleteDebtMutation.mutate(id, {
-        onError: (err: any) => {
-          setMutationError(err?.response?.data?.detail || err?.message || t("operation_failed"));
-        },
-      });
-    }
+  const handleDeleteDebt = async (id: number) => {
+    const ok = await confirm({
+      title: t("delete_confirm_title"),
+      message: t("confirm_delete_debt"),
+      confirmLabel: t("delete"),
+      variant: "danger",
+    });
+    if (!ok) return;
+    deleteDebtMutation.mutate(id, {
+      onSuccess: () => toast.success(t("debt_deleted")),
+      onError: (err: { response?: { data?: { detail?: string } }; message?: string }) =>
+        toast.error(err?.response?.data?.detail || err?.message || t("operation_failed")),
+    });
   };
 
   const handleCreateLease = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!tenantId || !leaseUnitId || !leaseStartDate || !leaseEndDate || !leaseMonthlyRentEgp) return;
-
-    setMutationError(null);
+    if (!tenantId || !selectedPropertyId || !leaseStartDate || !leaseEndDate || !leaseMonthlyRentEgp) return;
     createLeaseMutation.mutate(
       {
         tenant_id: tenantId,
-        unit_id: leaseUnitId,
+        property_id: selectedPropertyId,
         start_date: leaseStartDate,
         end_date: leaseEndDate,
         monthly_rent_cents: Math.round(Number(leaseMonthlyRentEgp) * 100),
         rent_due_day_of_month: leaseDueDay,
         late_fee_percent: leaseLateFeePercent || undefined,
-        security_deposit_cents: leaseSecurityDepositEgp ? Math.round(Number(leaseSecurityDepositEgp) * 100) : undefined,
+        security_deposit_cents: leaseSecurityDepositEgp
+          ? Math.round(Number(leaseSecurityDepositEgp) * 100)
+          : undefined,
       },
       {
         onSuccess: () => {
-          setShowLeaseForm(false);
+          setLeaseFormOpen(false);
           setSelectedPropertyId(null);
-          setLeaseUnitId(null);
           setLeaseStartDate(getLocalDateString());
           setLeaseEndDate(getLocalOneYearLaterDateString());
           setLeaseMonthlyRentEgp("");
           setLeaseDueDay(1);
           setLeaseLateFeePercent(0);
           setLeaseSecurityDepositEgp("");
+          toast.success(t("lease_created"));
         },
-        onError: (err: any) => {
-          setMutationError(err?.response?.data?.detail || err?.message || t("operation_failed"));
-        },
+        onError: (err: { response?: { data?: { detail?: string } }; message?: string }) =>
+          toast.error(err?.response?.data?.detail || err?.message || t("operation_failed")),
       }
     );
   };
 
-  const startEdit = () => {
-    if (!tenant) return;
-    setName(tenant.name);
-    setEmail(tenant.email || "");
-    setPhone(tenant.phone || "");
-    setNotes(tenant.notes || "");
-    setEditMode(true);
-  };
-
-  const handleUpdate = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!tenantId) return;
-    setMutationError(null);
-    updateMutation.mutate(
-      {
-        id: tenantId,
-        name: name || undefined,
-        email: email || undefined,
-        phone: phone || undefined,
-        notes: notes || undefined,
-      },
-      {
-        onSuccess: () => setEditMode(false),
-        onError: (err: any) => {
-          setMutationError(err?.response?.data?.detail || err?.message || t("operation_failed"));
-        },
-      }
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-40" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-12 w-full" />
+      </div>
     );
-  };
-
-  if (isLoading) return <p className="text-gray-500">{t("loading")}</p>;
-  if (error) return <p className="text-red-600">{t("failed_load_tenant")}</p>;
+  }
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title={t("person_profile")} backTo="/tenants" />
+        <Card>
+          <CardBody>
+            <p className="text-sm text-rose-600">{t("failed_load_tenant")}</p>
+          </CardBody>
+        </Card>
+      </div>
+    );
+  }
   if (!tenant) return null;
 
   return (
-    <div>
-      <div className="mb-4">
-        <Link to=".." className="text-blue-600 hover:underline text-sm">← {t("back")}</Link>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title={tenant.name}
+        description={t("person_profile")}
+        backTo="/tenants"
+        actions={
+          <Button leftIcon={<Edit size={16} />} variant="secondary" onClick={openEdit}>
+            {t("edit")}
+          </Button>
+        }
+      />
 
-      <ErrorBanner error={mutationError} />
-
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <span className="text-xs text-gray-500 uppercase tracking-wider">{t("person_profile")}</span>
-          <h2 className="text-xl font-semibold text-gray-800">{tenant.name}</h2>
-        </div>
-        <button
-          onClick={() => (editMode ? setEditMode(false) : startEdit())}
-          className="bg-blue-600 text-white rounded px-4 py-2 text-sm font-medium hover:bg-blue-700 transition-colors"
-        >
-          {editMode ? t("cancel") : t("edit")}
-        </button>
-      </div>
-
-      {editMode && (
-        <form
-          onSubmit={handleUpdate}
-          className="bg-white rounded shadow-sm p-4 mb-6 flex flex-col gap-3"
-        >
-          <input
-            type="text"
-            placeholder={t("name")}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="border rounded px-3 py-2 text-sm"
-            required
-          />
-          <input
-            type="email"
-            placeholder={t("email")}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="border rounded px-3 py-2 text-sm"
-          />
-          <input
-            type="text"
-            placeholder={t("phone")}
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="border rounded px-3 py-2 text-sm"
-          />
-          <input
-            type="text"
-            placeholder={t("notes")}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            className="border rounded px-3 py-2 text-sm"
-          />
-          <button
-            type="submit"
-            disabled={updateMutation.isPending}
-            className="bg-green-600 text-white rounded px-4 py-2 text-sm self-start disabled:opacity-50 hover:bg-green-700"
-          >
-            {updateMutation.isPending ? t("saving") : t("save_changes")}
-          </button>
-        </form>
-      )}
-
-      {!editMode && (
-        <div className="bg-white rounded shadow-sm p-4 mb-6 text-sm text-gray-600 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <p>
-            <strong>{t("email")}:</strong> {tenant.email || "—"}
-          </p>
-          <p>
-            <strong>{t("phone")}:</strong> {tenant.phone || "—"}
-          </p>
-          <p>
-            <strong>{t("notes")}:</strong> {tenant.notes || "—"}
-          </p>
-        </div>
-      )}
-
-      {balance && (
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="bg-white rounded shadow-sm p-4 border-l-4 border-blue-500">
-            <p className="text-xs text-gray-500 uppercase">{t("net_balance")}</p>
-            <p className="text-lg font-semibold">
-              <Money cents={balance.net_balance_cents} />
-            </p>
-          </div>
-          <div className="bg-white rounded shadow-sm p-4 border-l-4 border-green-500">
-            <p className="text-xs text-gray-500 uppercase">{t("deposits_held")}</p>
-            <p className="text-lg font-semibold">
-              <Money cents={balance.deposits_held_cents} />
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div className="flex border-b mb-6">
-        <button
-          onClick={() => setActiveTab("leases")}
-          className={`py-2 px-4 font-medium text-sm border-b-2 transition-colors ${
-            activeTab === "leases"
-              ? "border-blue-600 text-blue-600 font-semibold"
-              : "border-transparent text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          {t("rental_leases")}
-        </button>
-        <button
-          onClick={() => setActiveTab("debts")}
-          className={`py-2 px-4 font-medium text-sm border-b-2 transition-colors ${
-            activeTab === "debts"
-              ? "border-blue-600 text-blue-600 font-semibold"
-              : "border-transparent text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          {t("personal_debts")}
-        </button>
-      </div>
-
-      {activeTab === "leases" && (
-        <div className="space-y-6">
-          {/* Leases Table */}
-          <div className="bg-white rounded shadow-sm p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-semibold">{t("rental_leases")}</h3>
-              <button
-                onClick={() => setShowLeaseForm(!showLeaseForm)}
-                className="bg-blue-600 text-white rounded px-3 py-1.5 text-xs font-medium hover:bg-blue-700"
-              >
-                {t("add_lease")}
-              </button>
-            </div>
-
-            {showLeaseForm && (
-              <form onSubmit={handleCreateLease} className="border p-4 rounded mb-4 flex flex-col gap-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium mb-1">{t("property")}</label>
-                    <select
-                      value={selectedPropertyId || ""}
-                      onChange={(e) => {
-                        setSelectedPropertyId(Number(e.target.value) || null);
-                        setLeaseUnitId(null);
-                      }}
-                      className="border rounded px-3 py-2 text-sm w-full bg-white"
-                      required
-                    >
-                      <option value="">{t("select_property")}</option>
-                      {properties?.map((p) => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium mb-1">{t("unit")}</label>
-                    <select
-                      value={leaseUnitId || ""}
-                      onChange={(e) => setLeaseUnitId(Number(e.target.value) || null)}
-                      className="border rounded px-3 py-2 text-sm w-full bg-white"
-                      required
-                    >
-                      <option value="">{t("select_unit")}</option>
-                      {units?.map((u) => (
-                        <option key={u.id} value={u.id}>{u.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium mb-1">{t("start_date")}</label>
-                    <input
-                      type="date"
-                      value={leaseStartDate}
-                      onChange={(e) => setLeaseStartDate(e.target.value)}
-                      className="border rounded px-3 py-2 text-sm w-full"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium mb-1">{t("end_date")}</label>
-                    <input
-                      type="date"
-                      value={leaseEndDate}
-                      onChange={(e) => setLeaseEndDate(e.target.value)}
-                      className="border rounded px-3 py-2 text-sm w-full"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium mb-1">{t("monthly_rent_egp")}</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={leaseMonthlyRentEgp}
-                      onChange={(e) => setLeaseMonthlyRentEgp(e.target.value)}
-                      className="border rounded px-3 py-2 text-sm w-full"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium mb-1">{t("due_day")}</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={28}
-                      value={leaseDueDay}
-                      onChange={(e) => setLeaseDueDay(Number(e.target.value))}
-                      className="border rounded px-3 py-2 text-sm w-full"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium mb-1">{t("late_fee_percent")}</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={leaseLateFeePercent}
-                      onChange={(e) => setLeaseLateFeePercent(Number(e.target.value))}
-                      className="border rounded px-3 py-2 text-sm w-full"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium mb-1">{t("security_deposit_egp")}</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={leaseSecurityDepositEgp}
-                      onChange={(e) => setLeaseSecurityDepositEgp(e.target.value)}
-                      className="border rounded px-3 py-2 text-sm w-full"
-                    />
-                  </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card className="lg:col-span-2">
+          <CardBody>
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl font-semibold shrink-0">
+                {tenant.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-xl font-semibold text-slate-900 tracking-tight">{tenant.name}</h2>
+                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-slate-600">
+                  <span className="inline-flex items-center gap-2 min-w-0">
+                    <Mail size={14} className="text-slate-400 shrink-0" />
+                    <span className="truncate">{tenant.email || "—"}</span>
+                  </span>
+                  <span className="inline-flex items-center gap-2 min-w-0">
+                    <Phone size={14} className="text-slate-400 shrink-0" />
+                    <span className="truncate">{tenant.phone || "—"}</span>
+                  </span>
                 </div>
-                <div className="flex gap-2 justify-end">
-                  <button
-                    type="submit"
-                    disabled={createLeaseMutation.isPending}
-                    className="bg-green-600 text-white rounded px-4 py-1.5 text-xs font-semibold hover:bg-green-700"
-                  >
-                    {t("save")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowLeaseForm(false)}
-                    className="text-gray-600 text-xs"
-                  >
-                    {t("cancel")}
-                  </button>
-                </div>
-              </form>
-            )}
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead className="bg-gray-50 text-start">
-                  <tr>
-                    <th className="px-3 py-2 font-medium text-start">{t("unit")}</th>
-                    <th className="px-3 py-2 font-medium text-start">{t("start_date")}</th>
-                    <th className="px-3 py-2 font-medium text-start">{t("end_date")}</th>
-                    <th className="px-3 py-2 font-medium text-start">{t("monthly_rent_egp")}</th>
-                    <th className="px-3 py-2 font-medium text-start">{t("status")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {tenantLeases.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="px-3 py-4 text-center text-gray-500">
-                        {t("no_leases")}
-                      </td>
-                    </tr>
-                  )}
-                  {tenantLeases.map((l) => (
-                    <tr key={l.id} className="border-t">
-                      <td className="px-3 py-2">{l.unit_name}</td>
-                      <td className="px-3 py-2">{new Date(l.start_date).toLocaleDateString(language === "ar" ? "ar-EG" : "en-US")}</td>
-                      <td className="px-3 py-2">{new Date(l.end_date).toLocaleDateString(language === "ar" ? "ar-EG" : "en-US")}</td>
-                      <td className="px-3 py-2"><Money cents={l.monthly_rent_cents} /></td>
-                      <td className="px-3 py-2"><StatusPill status={l.status as any} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Rental Ledger / Charges Table */}
-          <div className="bg-white rounded shadow-sm p-4">
-            <h3 className="text-base font-semibold mb-4">{t("charges_ledger")}</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead className="bg-gray-50 text-start">
-                  <tr>
-                    <th className="px-4 py-3 font-medium text-start">{t("description")}</th>
-                    <th className="px-4 py-3 font-medium text-start">{t("amount")}</th>
-                    <th className="px-4 py-3 font-medium text-start">{t("paid")}</th>
-                    <th className="px-4 py-3 font-medium text-start">{t("balance")}</th>
-                    <th className="px-4 py-3 font-medium text-start">{t("status")}</th>
-                    <th className="px-4 py-3 font-medium text-start">{t("due_date")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {balance.charges.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
-                        {t("no_charges")}
-                      </td>
-                    </tr>
-                  )}
-                  {balance.charges.map((c, i) => (
-                    <tr key={i} className="border-t">
-                      <td className="px-4 py-3">{c.description}</td>
-                      <td className="px-4 py-3">
-                        <Money cents={c.amount_cents} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <Money cents={c.paid_cents} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <Money cents={c.balance_cents} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <StatusPill status={c.status as any} />
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">
-                        {c.due_date
-                          ? new Date(c.due_date).toLocaleDateString(language === "ar" ? "ar-EG" : "en-US")
-                          : "—"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === "debts" && (
-        <div className="bg-white rounded shadow-sm p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-base font-semibold">{t("personal_debts")}</h3>
-            <button
-              onClick={() => setShowDebtForm(!showDebtForm)}
-              className="bg-blue-600 text-white rounded px-3 py-1.5 text-xs font-medium hover:bg-blue-700"
-            >
-              {t("add_debt")}
-            </button>
-          </div>
-
-          {showDebtForm && (
-            <DebtForm tenantId={tenantId!} onSuccess={() => setShowDebtForm(false)} />
-          )}
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead className="bg-gray-50 text-start">
-                <tr>
-                  <th className="px-4 py-3 font-medium text-start">{t("debt_date")}</th>
-                  <th className="px-4 py-3 font-medium text-start">{t("elapsed_duration")}</th>
-                  <th className="px-4 py-3 font-medium text-start">{t("amount")}</th>
-                  <th className="px-4 py-3 font-medium text-start">{t("paid")}</th>
-                  <th className="px-4 py-3 font-medium text-start">{t("remaining")}</th>
-                  <th className="px-4 py-3 font-medium text-start">{t("status")}</th>
-                  <th className="px-4 py-3 font-medium text-start w-32">{t("actions")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {personalDebts.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-6 text-center text-gray-500">
-                      {t("no_debts_found")}
-                    </td>
-                  </tr>
+                {tenant.notes && (
+                  <p className="mt-3 text-sm text-slate-500">{tenant.notes}</p>
                 )}
-                {personalDebts.map((c) => (
-                  <tr key={c.id} className="border-t">
-                    <td className="px-4 py-3 text-gray-600">
-                      {c.charge_date
-                        ? new Date(c.charge_date).toLocaleDateString(
-                            language === "ar" ? "ar-EG" : "en-US"
-                          )
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">
-                      {getElapsedDuration(c.charge_date, new Date(), language)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Money cents={c.amount_cents} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <Money cents={c.paid_cents} />
-                    </td>
-                    <td className="px-4 py-3 font-medium">
-                      <Money cents={c.balance_cents} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusPill status={c.status} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1">
-                        {paymentChargeId === c.id ? (
-                          <form
-                            onSubmit={(e) => handlePayment(e, c.id)}
-                            className="flex flex-col gap-1 w-full"
-                          >
-                            <input
-                              type="number"
-                              step="0.01"
-                              placeholder={t("amount")}
-                              value={paymentAmountEgp}
-                              onChange={(e) => setPaymentAmountEgp(e.target.value)}
-                              className="border rounded px-1 py-0.5 text-xs w-24"
-                              required
-                            />
-                            <input
-                              type="text"
-                              placeholder={t("method")}
-                              value={paymentMethod}
-                              onChange={(e) => setPaymentMethod(e.target.value)}
-                              className="border rounded px-1 py-0.5 text-xs"
-                            />
-                            <div className="flex gap-1">
-                              <button
-                                type="submit"
-                                disabled={createPaymentMutation.isPending}
-                                className="text-green-600 text-xs font-semibold hover:text-green-700"
-                              >
-                                {t("save")}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setPaymentChargeId(null)}
-                                className="text-gray-500 text-xs"
-                              >
-                                {t("cancel")}
-                              </button>
-                            </div>
-                          </form>
-                        ) : (
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => {
-                                setPaymentChargeId(c.id);
-                              }}
-                              className="text-blue-600 hover:underline text-xs"
-                            >
-                              {t("pay")}
-                            </button>
-                            <button
-                              onClick={() => handleDeleteDebt(c.id)}
-                              className="text-red-600 hover:underline text-xs"
-                            >
-                              {t("del")}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+
+        {balance && (
+          <div className="space-y-4">
+            <Card>
+              <CardBody className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    {t("net_balance")}
+                  </span>
+                  <Badge variant={balance.net_balance_cents > 0 ? "warning" : "success"}>
+                    <Wallet size={12} />
+                  </Badge>
+                </div>
+                <div className="text-2xl font-semibold text-slate-900 tracking-tight">
+                  <Money cents={balance.net_balance_cents} />
+                </div>
+              </CardBody>
+            </Card>
+            <Card>
+              <CardBody className="space-y-2">
+                <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  {t("deposits_held")}
+                </span>
+                <div className="text-lg font-semibold text-slate-900">
+                  <Money cents={balance.deposits_held_cents} />
+                </div>
+              </CardBody>
+            </Card>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+
+      <Tabs
+        activeId={activeTab}
+        onChange={(id) => setActiveTab(id as "leases" | "debts")}
+        items={[
+          {
+            id: "leases",
+            label: t("rental_leases"),
+            content: (
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <h3 className="text-base font-semibold text-slate-900">{t("rental_leases")}</h3>
+                    <Button size="sm" leftIcon={<Plus size={14} />} onClick={() => setLeaseFormOpen(true)}>
+                      {t("add_lease")}
+                    </Button>
+                  </CardHeader>
+                  {tenantLeases.length > 0 ? (
+                    <Table>
+                      <THead>
+                        <TR>
+                          <TH>{t("property")}</TH>
+                          <TH>{t("start_date")}</TH>
+                          <TH>{t("end_date")}</TH>
+                          <TH>{t("monthly_rent_egp")}</TH>
+                          <TH>{t("status")}</TH>
+                        </TR>
+                      </THead>
+                      <TBody>
+                        {tenantLeases.map((l) => (
+                          <TR key={l.id}>
+                            <TD className="font-medium text-slate-900">{l.property_name}</TD>
+                            <TD>{new Date(l.start_date).toLocaleDateString(language === "ar" ? "ar-EG" : "en-US")}</TD>
+                            <TD>{new Date(l.end_date).toLocaleDateString(language === "ar" ? "ar-EG" : "en-US")}</TD>
+                            <TD><Money cents={l.monthly_rent_cents} /></TD>
+                            <TD><StatusPill status={l.status as "active" | "ended" | "expired"} /></TD>
+                          </TR>
+                        ))}
+                      </TBody>
+                    </Table>
+                  ) : (
+                    <EmptyState icon={<FileText size={24} />} title={t("no_leases")} />
+                  )}
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <h3 className="text-base font-semibold text-slate-900">{t("charges_ledger")}</h3>
+                  </CardHeader>
+                  {balance?.charges && balance.charges.length > 0 ? (
+                    <Table>
+                      <THead>
+                        <TR>
+                          <TH>{t("description")}</TH>
+                          <TH>{t("amount")}</TH>
+                          <TH>{t("paid")}</TH>
+                          <TH>{t("balance")}</TH>
+                          <TH>{t("status")}</TH>
+                          <TH>{t("due_date")}</TH>
+                        </TR>
+                      </THead>
+                      <TBody>
+                        {balance.charges.map((c, i) => (
+                          <TR key={i}>
+                            <TD>{c.description}</TD>
+                            <TD><Money cents={c.amount_cents} /></TD>
+                            <TD><Money cents={c.paid_cents} /></TD>
+                            <TD><Money cents={c.balance_cents} /></TD>
+                            <TD><StatusPill status={c.status as "paid" | "partial" | "unpaid" | "overdue"} /></TD>
+                            <TD className="text-slate-500">
+                              {c.due_date ? new Date(c.due_date).toLocaleDateString(language === "ar" ? "ar-EG" : "en-US") : "—"}
+                            </TD>
+                          </TR>
+                        ))}
+                      </TBody>
+                    </Table>
+                  ) : (
+                    <EmptyState icon={<Receipt size={24} />} title={t("no_charges")} />
+                  )}
+                </Card>
+              </div>
+            ),
+          },
+          {
+            id: "debts",
+            label: t("personal_debts"),
+            content: (
+              <Card>
+                <CardHeader>
+                  <h3 className="text-base font-semibold text-slate-900">{t("personal_debts")}</h3>
+                  <Button size="sm" leftIcon={<Plus size={14} />} onClick={() => setShowDebtForm(!showDebtForm)}>
+                    {t("add_debt")}
+                  </Button>
+                </CardHeader>
+                {showDebtForm && (
+                  <div className="px-6 pb-4">
+                    <DebtForm
+                      tenantId={tenantId!}
+                      onSuccess={() => {
+                        setShowDebtForm(false);
+                        toast.success(t("debt_added"));
+                      }}
+                    />
+                  </div>
+                )}
+                {personalDebts.length > 0 ? (
+                  <Table>
+                    <THead>
+                      <TR>
+                        <TH>{t("debt_date")}</TH>
+                        <TH>{t("elapsed_duration")}</TH>
+                        <TH>{t("amount")}</TH>
+                        <TH>{t("paid")}</TH>
+                        <TH>{t("remaining")}</TH>
+                        <TH>{t("status")}</TH>
+                        <TH className="w-32">{t("actions")}</TH>
+                      </TR>
+                    </THead>
+                    <TBody>
+                      {personalDebts.map((c) => (
+                        <TR key={c.id}>
+                          <TD className="text-slate-500">
+                            {c.charge_date ? new Date(c.charge_date).toLocaleDateString(language === "ar" ? "ar-EG" : "en-US") : "—"}
+                          </TD>
+                          <TD className="text-slate-500">{getElapsedDuration(c.charge_date, new Date(), language)}</TD>
+                          <TD><Money cents={c.amount_cents} /></TD>
+                          <TD><Money cents={c.paid_cents} /></TD>
+                          <TD className="font-medium text-slate-900"><Money cents={c.balance_cents} /></TD>
+                          <TD><StatusPill status={c.status} /></TD>
+                          <TD>
+                            {paymentChargeId === c.id ? (
+                              <form onSubmit={(e) => handlePayment(e, c.id)} className="space-y-2">
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder={t("amount")}
+                                  value={paymentAmountEgp}
+                                  onChange={(e) => setPaymentAmountEgp(e.target.value)}
+                                  required
+                                />
+                                <Input
+                                  placeholder={t("method")}
+                                  value={paymentMethod}
+                                  onChange={(e) => setPaymentMethod(e.target.value)}
+                                />
+                                <div className="flex gap-2">
+                                  <Button type="submit" size="sm" loading={createPaymentMutation.isPending}>
+                                    {t("save")}
+                                  </Button>
+                                  <Button type="button" size="sm" variant="ghost" onClick={() => setPaymentChargeId(null)}>
+                                    {t("cancel")}
+                                  </Button>
+                                </div>
+                              </form>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                <Button size="sm" variant="ghost" onClick={() => setPaymentChargeId(c.id)}>
+                                  {t("pay")}
+                                </Button>
+                                <button
+                                  onClick={() => handleDeleteDebt(c.id)}
+                                  aria-label={t("delete")}
+                                  className="p-1.5 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            )}
+                          </TD>
+                        </TR>
+                      ))}
+                    </TBody>
+                  </Table>
+                ) : (
+                  <EmptyState icon={<AlertCircle size={24} />} title={t("no_debts_found")} />
+                )}
+              </Card>
+            ),
+          },
+        ]}
+      />
+
+      <Modal
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        title={t("edit_tenant")}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setEditOpen(false)}>{t("cancel")}</Button>
+            <Button onClick={handleUpdate} loading={updateMutation.isPending}>
+              {updateMutation.isPending ? t("saving") : t("save_changes")}
+            </Button>
+          </>
+        }
+      >
+        <form onSubmit={handleUpdate} className="space-y-4">
+          <Input label={t("name")} value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
+          <Input label={`${t("email")} ${t("optional")}`} type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <Input label={`${t("phone")} ${t("optional")}`} value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <Input label={`${t("notes")} ${t("optional")}`} value={notes} onChange={(e) => setNotes(e.target.value)} />
+        </form>
+      </Modal>
+
+      <Modal
+        open={leaseFormOpen}
+        onClose={() => setLeaseFormOpen(false)}
+        title={t("add_lease")}
+        size="lg"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setLeaseFormOpen(false)}>{t("cancel")}</Button>
+            <Button onClick={handleCreateLease} loading={createLeaseMutation.isPending}>
+              {createLeaseMutation.isPending ? t("saving") : t("save")}
+            </Button>
+          </>
+        }
+      >
+        <form onSubmit={handleCreateLease} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Select
+              label={t("property")}
+              value={selectedPropertyId ?? ""}
+              onChange={(e) => setSelectedPropertyId(Number(e.target.value) || null)}
+              required
+            >
+              <option value="">{t("select_property")}</option>
+              {properties?.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </Select>
+            <Input label={t("start_date")} type="date" value={leaseStartDate} onChange={(e) => setLeaseStartDate(e.target.value)} required />
+            <Input label={t("end_date")} type="date" value={leaseEndDate} onChange={(e) => setLeaseEndDate(e.target.value)} required />
+            <Input label={t("monthly_rent_egp")} type="number" step="0.01" value={leaseMonthlyRentEgp} onChange={(e) => setLeaseMonthlyRentEgp(e.target.value)} required />
+            <Input label={t("due_day")} type="number" min={1} max={28} value={leaseDueDay} onChange={(e) => setLeaseDueDay(Number(e.target.value))} required />
+            <Input label={t("late_fee_percent")} type="number" step="0.01" value={leaseLateFeePercent || ""} onChange={(e) => setLeaseLateFeePercent(Number(e.target.value))} />
+            <Input label={t("security_deposit_egp")} type="number" step="0.01" value={leaseSecurityDepositEgp} onChange={(e) => setLeaseSecurityDepositEgp(e.target.value)} />
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

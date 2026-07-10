@@ -2,6 +2,10 @@ import { useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useLogin } from "../hooks/useAuth";
 import { useLanguage } from "../context/LanguageContext";
+import { Card, CardBody } from "../components/ui/Card";
+import { Input } from "../components/ui/Input";
+import { Button } from "../components/ui/Button";
+import { AlertCircle } from "../components/ui/AppIcon";
 
 export function Login() {
   const navigate = useNavigate();
@@ -13,9 +17,7 @@ export function Login() {
   const [error, setError] = useState("");
 
   const token = localStorage.getItem("token");
-  if (token) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  if (token) return <Navigate to="/dashboard" replace />;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,57 +30,68 @@ export function Login() {
           const redirect = searchParams.get("redirect") || "/dashboard";
           navigate(redirect, { replace: true });
         },
-        onError: () => {
-          setError(t("invalid_credentials"));
-        },
+        onError: () => setError(t("invalid_credentials")),
       }
     );
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <div className="bg-white p-8 rounded shadow-sm w-full max-w-sm relative">
-        <div className="absolute top-4 end-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-emerald-50 p-4">
+      <div className="w-full max-w-sm animate-slide-up">
+        <div className="flex justify-end mb-3">
           <button
             onClick={() => setLanguage(language === "ar" ? "en" : "ar")}
-            className="text-xs bg-gray-100 hover:bg-gray-200 px-2.5 py-1 rounded font-medium transition-colors"
+            className="text-xs font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 hover:bg-slate-50 px-3 py-1.5 rounded-lg transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
           >
             {language === "ar" ? "English" : "العربية"}
           </button>
         </div>
-        <h1 className="text-xl font-bold mb-6">{t("login_title")}</h1>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">{t("username")}</label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full border rounded px-3 py-2 text-sm"
-              required
-            />
+
+        <Card className="overflow-hidden">
+          <div className="px-6 pt-8 pb-2 text-center">
+            <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600 text-white font-bold text-xl mb-3">
+              R
+            </div>
+            <h1 className="text-2xl font-semibold text-slate-900 tracking-tight">
+              {t("login_title")}
+            </h1>
+            <p className="mt-1 text-sm text-slate-500">
+              {language === "ar" ? "سجل دخولك للمتابعة" : "Sign in to continue"}
+            </p>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">{t("password")}</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full border rounded px-3 py-2 text-sm"
-              required
-            />
-          </div>
-          {error && <p className="text-red-600 text-sm">{error}</p>}
-          <button
-            type="submit"
-            disabled={login.isPending}
-            className="bg-blue-600 text-white rounded px-4 py-2 text-sm font-medium disabled:opacity-50"
-          >
-            {login.isPending ? t("signing_in") : t("sign_in")}
-          </button>
-        </form>
+          <CardBody>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <Input
+                label={t("username")}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoComplete="username"
+                required
+              />
+              <Input
+                label={t("password")}
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                required
+              />
+              {error && (
+                <div
+                  role="alert"
+                  className="flex items-start gap-2 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg px-3 py-2 text-sm"
+                >
+                  <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                  <span>{error}</span>
+                </div>
+              )}
+              <Button type="submit" className="w-full" loading={login.isPending}>
+                {login.isPending ? t("signing_in") : t("sign_in")}
+              </Button>
+            </form>
+          </CardBody>
+        </Card>
       </div>
     </div>
   );
 }
-

@@ -111,3 +111,31 @@ export function useDeleteCharge() {
     },
   });
 }
+
+export function useCreateGeneralCharge() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      tenant_id: number;
+      description: string;
+      amount_cents: number;
+      charge_date: string;
+      category?: string;
+    }) =>
+      api.post("/charges/", data).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["charges"] });
+    },
+  });
+}
+
+export function useDeleteGeneralCharge() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (chargeId: number) =>
+      api.delete(`/charges/${chargeId}`).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["charges"] });
+    },
+  });
+}

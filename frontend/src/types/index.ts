@@ -6,13 +6,6 @@ export interface Property {
   created_at: string;
 }
 
-export interface Unit {
-  id: number;
-  property_id: number;
-  name: string;
-  notes: string | null;
-}
-
 export interface Tenant {
   id: number;
   name: string;
@@ -24,7 +17,7 @@ export interface Tenant {
 
 export interface Lease {
   id: number;
-  unit_id: number;
+  property_id: number;
   tenant_id: number;
   start_date: string;
   end_date: string;
@@ -34,7 +27,7 @@ export interface Lease {
   security_deposit_cents: number;
   status: "active" | "ended" | "expired";
   tenant_name: string;
-  unit_name: string;
+  property_name: string;
   created_at: string;
 }
 

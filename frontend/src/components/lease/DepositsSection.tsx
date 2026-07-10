@@ -1,22 +1,27 @@
 import { useState } from "react";
 import { Money } from "../Money";
-import { ErrorBanner } from "../ErrorBanner";
 import { useLeaseDeposits, useCreateDeposit } from "../../hooks/useDeposits";
 import { useLanguage } from "../../context/LanguageContext";
+import { useToast } from "../ui/Toast";
+import { Button } from "../ui/Button";
+import { Input } from "../ui/Input";
+import { Modal } from "../ui/Modal";
+import { Card, CardBody } from "../ui/Card";
+import { EmptyState } from "../ui/EmptyState";
+import { Plus, Wallet } from "../ui/AppIcon";
 
 export function DepositsSection({ leaseId }: { leaseId: number }) {
   const { data: deposits } = useLeaseDeposits(leaseId);
   const createDeposit = useCreateDeposit();
   const { language, t } = useLanguage();
+  const toast = useToast();
   const [showForm, setShowForm] = useState(false);
   const [amountEgp, setAmountEgp] = useState("");
   const [collectedDate, setCollectedDate] = useState("");
   const [notes, setNotes] = useState("");
-  const [mutationError, setMutationError] = useState<string | null>(null);
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    setMutationError(null);
     createDeposit.mutate(
       {
         leaseId,
@@ -30,97 +35,87 @@ export function DepositsSection({ leaseId }: { leaseId: number }) {
           setAmountEgp("");
           setCollectedDate("");
           setNotes("");
+          toast.success(t("deposit_added"));
         },
-        onError: (err: any) => {
-          setMutationError(err?.response?.data?.detail || err?.message || t("operation_failed"));
-        },
+        onError: (err: { response?: { data?: { detail?: string } }; message?: string }) =>
+          toast.error(err?.response?.data?.detail || err?.message || t("operation_failed")),
       }
     );
   };
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-medium">{t("deposits")}</h3>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="bg-blue-600 text-white rounded px-4 py-2 text-sm font-medium"
-        >
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-base font-semibold text-slate-900">{t("deposits")}</h3>
+        <Button leftIcon={<Plus size={16} />} onClick={() => setShowForm(true)}>
           {t("add_deposit")}
-        </button>
+        </Button>
       </div>
 
-      <ErrorBanner error={mutationError} />
+      {deposits && deposits.length > 0 ? (
+        <div className="space-y-3">
+          {deposits.map((d) => (
+            <Card key={d.id}>
+              <CardBody>
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                    <Wallet size={18} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-slate-900">
+                      <Money cents={d.amount_held_cents} />
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      {t("collected")}: {new Date(d.collected_date).toLocaleDateString(language === "ar" ? "ar-EG" : "en-US")}
+                      {d.notes && ` — ${d.notes}`}
+                    </div>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <EmptyState icon={<Wallet size={24} />} title={t("no_deposits")} />
+      )}
 
-      {showForm && (
-        <form
-          onSubmit={handleCreate}
-          className="bg-white rounded shadow-sm p-4 mb-4 flex flex-col gap-3"
-        >
-          <input
+      <Modal
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        title={t("add_deposit")}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setShowForm(false)}>{t("cancel")}</Button>
+            <Button onClick={handleCreate} loading={createDeposit.isPending}>
+              {createDeposit.isPending ? t("saving") : t("save")}
+            </Button>
+          </>
+        }
+      >
+        <form onSubmit={handleCreate} className="space-y-4">
+          <Input
+            label={t("amount_cents")}
             type="number"
             step="0.01"
-            placeholder={t("amount_cents")}
             value={amountEgp}
             onChange={(e) => setAmountEgp(e.target.value)}
-            className="border rounded px-3 py-2 text-sm"
             required
+            autoFocus
           />
-          <input
+          <Input
+            label={t("debt_date")}
             type="date"
             value={collectedDate}
             onChange={(e) => setCollectedDate(e.target.value)}
-            className="border rounded px-3 py-2 text-sm"
             required
           />
-          <input
-            type="text"
-            placeholder={t("notes_optional")}
+          <Input
+            label={`${t("notes")} ${t("optional")}`}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            className="border rounded px-3 py-2 text-sm"
           />
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={createDeposit.isPending}
-              className="bg-green-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50"
-            >
-              {createDeposit.isPending ? t("saving") : t("save")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowForm(false)}
-              className="text-gray-600 text-sm"
-            >
-              {t("cancel")}
-            </button>
-          </div>
         </form>
-      )}
-
-      <div className="space-y-3">
-        {deposits?.length === 0 && (
-          <p className="text-gray-500 text-sm">{t("no_deposits")}</p>
-        )}
-        {deposits?.map((d) => (
-          <div
-            key={d.id}
-            className="bg-white rounded shadow-sm p-3 flex justify-between items-center"
-          >
-            <div>
-              <span className="font-medium text-sm">
-                <Money cents={d.amount_held_cents} />
-              </span>
-              <span className="text-xs text-gray-500 ml-3">
-                {t("collected")}: {new Date(d.collected_date).toLocaleDateString(language === "ar" ? "ar-EG" : "en-US")}
-                {d.notes && ` — ${d.notes}`}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
+      </Modal>
     </div>
   );
 }
-

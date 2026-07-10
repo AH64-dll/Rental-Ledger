@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   useLeases,
@@ -7,13 +7,25 @@ import {
   useEndLease,
 } from "../hooks/useLeases";
 import { useProperties } from "../hooks/useProperties";
-import { useUnits } from "../hooks/useUnits";
 import { useTenants } from "../hooks/useTenants";
 import { Money } from "../components/Money";
-import { ErrorBanner } from "../components/ErrorBanner";
-import type { Lease } from "../types";
+import { StatusPill } from "../components/StatusPill";
 import { useLanguage } from "../context/LanguageContext";
+import { useToast } from "../components/ui/Toast";
+import { useConfirm } from "../components/ui/ConfirmDialog";
+import { PageHeader } from "../components/ui/PageHeader";
+import { Card } from "../components/ui/Card";
+import { Button } from "../components/ui/Button";
+import { Modal } from "../components/ui/Modal";
+import { Input } from "../components/ui/Input";
+import { Select } from "../components/ui/Select";
+import { Table, THead, TBody, TR, TH, TD } from "../components/ui/Table";
+import { EmptyState } from "../components/ui/EmptyState";
+import { Skeleton } from "../components/ui/Skeleton";
+import { Plus, FileText, ChevronRight, ChevronLeft, Check, Trash2, Filter } from "../components/ui/AppIcon";
 import { getLocalDateString, getLocalOneYearLaterDateString } from "../utils/dateUtils";
+
+type StatusFilter = "all" | "active" | "ended" | "expired";
 
 export function LeasesList() {
   const { data, isLoading, error } = useLeases();
@@ -21,12 +33,15 @@ export function LeasesList() {
   const deleteMutation = useDeleteLease();
   const endMutation = useEndLease();
   const { language, t } = useLanguage();
-  const [mutationError, setMutationError] = useState<string | null>(null);
-
+  const toast = useToast();
+  const { confirm } = useConfirm();
   const [showForm, setShowForm] = useState(false);
-  const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
-  const [unitId, setUnitId] = useState<number | null>(null);
+  const { data: properties } = useProperties();
+  const { data: tenants } = useTenants();
+
+  const [propertyId, setPropertyId] = useState<number | null>(null);
   const [tenantId, setTenantId] = useState<number | null>(null);
   const [startDate, setStartDate] = useState(getLocalDateString());
   const [endDate, setEndDate] = useState(getLocalOneYearLaterDateString());
@@ -35,17 +50,20 @@ export function LeasesList() {
   const [lateFeePercent, setLateFeePercent] = useState(0);
   const [securityDepositEgp, setSecurityDepositEgp] = useState("");
 
-  const { data: properties } = useProperties();
-  const { data: units } = useUnits(selectedPropertyId);
-  const { data: tenants } = useTenants();
+  const Chevron = language === "ar" ? ChevronLeft : ChevronRight;
+
+  const filtered = useMemo(() => {
+    if (!data) return [];
+    if (statusFilter === "all") return data;
+    return data.filter((l) => l.status === statusFilter);
+  }, [data, statusFilter]);
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!unitId || !tenantId) return;
-    setMutationError(null);
+    if (!propertyId || !tenantId) return;
     createMutation.mutate(
       {
-        unit_id: unitId,
+        property_id: propertyId,
         tenant_id: tenantId,
         start_date: startDate,
         end_date: endDate,
@@ -57,7 +75,7 @@ export function LeasesList() {
       {
         onSuccess: () => {
           setShowForm(false);
-          setUnitId(null);
+          setPropertyId(null);
           setTenantId(null);
           setStartDate(getLocalDateString());
           setEndDate(getLocalOneYearLaterDateString());
@@ -65,248 +83,206 @@ export function LeasesList() {
           setDueDay(1);
           setLateFeePercent(0);
           setSecurityDepositEgp("");
+          toast.success(t("lease_created"));
         },
-        onError: (err: any) => {
-          setMutationError(err?.response?.data?.detail || err?.message || t("operation_failed"));
-        },
+        onError: (err: { response?: { data?: { detail?: string } }; message?: string }) =>
+          toast.error(err?.response?.data?.detail || err?.message || t("operation_failed")),
       }
     );
   };
 
-  const statusStyle = (status: Lease["status"]) => {
-    if (status === "active") return "bg-green-100 text-green-800";
-    if (status === "ended") return "bg-gray-100 text-gray-800";
-    return "bg-red-100 text-red-800";
+  const handleEnd = async (id: number) => {
+    const ok = await confirm({
+      title: t("end"),
+      message: t("confirm_end_lease"),
+      confirmLabel: t("end"),
+      variant: "primary",
+    });
+    if (!ok) return;
+    endMutation.mutate(id, {
+      onSuccess: () => toast.success(t("lease_ended")),
+      onError: (err: { response?: { data?: { detail?: string } }; message?: string }) =>
+        toast.error(err?.response?.data?.detail || err?.message || t("operation_failed")),
+    });
   };
 
-  if (isLoading) return <p className="text-gray-500">{t("loading")}</p>;
-  if (error) return <p className="text-red-600">{t("failed_load_leases")}</p>;
+  const handleDelete = async (id: number) => {
+    const ok = await confirm({
+      title: t("delete_confirm_title"),
+      message: t("confirm_delete_lease"),
+      confirmLabel: t("delete"),
+      variant: "danger",
+    });
+    if (!ok) return;
+    deleteMutation.mutate(id, {
+      onSuccess: () => toast.success(t("lease_deleted")),
+      onError: (err: { response?: { data?: { detail?: string } }; message?: string }) =>
+        toast.error(err?.response?.data?.detail || err?.message || t("operation_failed")),
+    });
+  };
+
+  if (error) {
+    return (
+      <div>
+        <PageHeader title={t("leases")} description={t("leases_desc")} />
+        <Card>
+          <div className="p-6 text-sm text-rose-600">{t("failed_load_leases")}</div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold">{t("leases")}</h2>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="bg-blue-600 text-white rounded px-4 py-2 text-sm font-medium"
-        >
-          {t("add_lease")}
-        </button>
+    <div className="space-y-6">
+      <PageHeader
+        title={t("leases")}
+        description={t("leases_desc")}
+        actions={
+          <Button leftIcon={<Plus size={16} />} onClick={() => setShowForm(true)}>
+            {t("add_lease")}
+          </Button>
+        }
+      />
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-slate-500 inline-flex items-center gap-1">
+          <Filter size={12} /> {t("status")}:
+        </span>
+        {(["all", "active", "ended", "expired"] as StatusFilter[]).map((s) => (
+          <button
+            key={s}
+            onClick={() => setStatusFilter(s)}
+            className={[
+              "text-xs px-2.5 py-1 rounded-full border transition-colors cursor-pointer",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
+              statusFilter === s
+                ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50",
+            ].join(" ")}
+          >
+            {s === "all" ? t("all_statuses") : t(`status_${s}`)}
+          </button>
+        ))}
       </div>
 
-      <ErrorBanner error={mutationError} />
+      <Card>
+        {isLoading ? (
+          <div className="p-6 space-y-3">
+            {[1, 2, 3].map((i) => (<Skeleton key={i} className="h-10 w-full" />))}
+          </div>
+        ) : filtered.length > 0 ? (
+          <Table>
+            <THead>
+              <TR>
+                <TH>{t("tenant")}</TH>
+                <TH>{t("property")}</TH>
+                <TH>{t("period")}</TH>
+                <TH>{t("rent")}</TH>
+                <TH>{t("status")}</TH>
+                <TH className="w-32">{t("actions")}</TH>
+              </TR>
+            </THead>
+            <TBody>
+              {filtered.map((l) => (
+                <TR key={l.id}>
+                  <TD>
+                    <Link
+                      to={`/leases/${l.id}`}
+                      className="font-medium text-slate-900 hover:text-indigo-600 transition-colors inline-flex items-center gap-1"
+                    >
+                      {l.tenant_name}
+                      <Chevron size={14} className="text-slate-400" />
+                    </Link>
+                  </TD>
+                  <TD className="text-slate-600">{l.property_name}</TD>
+                  <TD className="text-slate-600">
+                    {new Date(l.start_date).toLocaleDateString(language === "ar" ? "ar-EG" : "en-US")} —{" "}
+                    {new Date(l.end_date).toLocaleDateString(language === "ar" ? "ar-EG" : "en-US")}
+                  </TD>
+                  <TD><Money cents={l.monthly_rent_cents} /></TD>
+                  <TD><StatusPill status={l.status} /></TD>
+                  <TD>
+                    <div className="flex items-center gap-1">
+                      {l.status === "active" && (
+                        <button
+                          onClick={() => handleEnd(l.id)}
+                          aria-label={t("end")}
+                          className="p-1.5 rounded text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                          title={t("end")}
+                        >
+                          <Check size={16} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDelete(l.id)}
+                        aria-label={t("delete")}
+                        className="p-1.5 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </TD>
+                </TR>
+              ))}
+            </TBody>
+          </Table>
+        ) : (
+          <EmptyState
+            icon={<FileText size={24} />}
+            title={t("no_leases")}
+            description={t("add_first_lease")}
+            action={
+              <Button leftIcon={<Plus size={16} />} onClick={() => setShowForm(true)}>
+                {t("add_lease")}
+              </Button>
+            }
+          />
+        )}
+      </Card>
 
-      {showForm && (
-        <form
-          onSubmit={handleCreate}
-          className="bg-white rounded shadow-sm p-4 mb-6 grid grid-cols-2 gap-3"
-        >
-          <div>
-            <label className="block text-xs font-medium mb-1">{t("property")}</label>
-            <select
-              value={selectedPropertyId ?? ""}
-              onChange={(e) => {
-                const v = e.target.value ? Number(e.target.value) : null;
-                setSelectedPropertyId(v);
-                setUnitId(null);
-              }}
-              className="border rounded px-3 py-2 text-sm w-full"
+      <Modal
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        title={t("add_lease")}
+        size="lg"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setShowForm(false)}>{t("cancel")}</Button>
+            <Button onClick={handleCreate} loading={createMutation.isPending}>
+              {createMutation.isPending ? t("saving") : t("save")}
+            </Button>
+          </>
+        }
+      >
+        <form onSubmit={handleCreate} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Select
+              label={t("property")}
+              value={propertyId ?? ""}
+              onChange={(e) => setPropertyId(e.target.value ? Number(e.target.value) : null)}
+              required
             >
               <option value="">{t("select_property")}</option>
-              {properties?.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium mb-1">{t("unit")}</label>
-            <select
-              value={unitId ?? ""}
-              onChange={(e) => setUnitId(e.target.value ? Number(e.target.value) : null)}
-              className="border rounded px-3 py-2 text-sm w-full"
-            >
-              <option value="">{t("select_unit")}</option>
-              {units?.map((u) => (
-                <option key={u.id} value={u.id}>{u.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium mb-1">{t("tenant")}</label>
-            <select
+              {properties?.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
+            </Select>
+            <Select
+              label={t("tenant")}
               value={tenantId ?? ""}
               onChange={(e) => setTenantId(e.target.value ? Number(e.target.value) : null)}
-              className="border rounded px-3 py-2 text-sm w-full"
+              required
             >
               <option value="">{t("select_tenant")}</option>
-              {tenants?.map((tRef) => (
-                <option key={tRef.id} value={tRef.id}>{tRef.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium mb-1">{t("start_date")}</label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="border rounded px-3 py-2 text-sm w-full"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium mb-1">{t("end_date")}</label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="border rounded px-3 py-2 text-sm w-full"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium mb-1">{t("monthly_rent_egp")}</label>
-            <input
-              type="number"
-              step="0.01"
-              value={monthlyRentEgp}
-              onChange={(e) => setMonthlyRentEgp(e.target.value)}
-              className="border rounded px-3 py-2 text-sm w-full"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium mb-1">{t("due_day")}</label>
-            <input
-              type="number"
-              min={1}
-              max={28}
-              value={dueDay}
-              onChange={(e) => setDueDay(Number(e.target.value))}
-              className="border rounded px-3 py-2 text-sm w-full"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium mb-1">{t("late_fee_percent")}</label>
-            <input
-              type="number"
-              value={lateFeePercent || ""}
-              onChange={(e) => setLateFeePercent(Number(e.target.value))}
-              className="border rounded px-3 py-2 text-sm w-full"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium mb-1">{t("security_deposit_egp")}</label>
-            <input
-              type="number"
-              step="0.01"
-              value={securityDepositEgp}
-              onChange={(e) => setSecurityDepositEgp(e.target.value)}
-              className="border rounded px-3 py-2 text-sm w-full"
-            />
-          </div>
-          <div className="col-span-2 flex gap-2">
-            <button
-              type="submit"
-              disabled={createMutation.isPending}
-              className="bg-green-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50"
-            >
-              {createMutation.isPending ? t("saving") : t("save")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowForm(false)}
-              className="text-gray-600 text-sm"
-            >
-              {t("cancel")}
-            </button>
+              {tenants?.map((tn) => (<option key={tn.id} value={tn.id}>{tn.name}</option>))}
+            </Select>
+            <Input label={t("start_date")} type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
+            <Input label={t("end_date")} type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
+            <Input label={t("monthly_rent_egp")} type="number" step="0.01" value={monthlyRentEgp} onChange={(e) => setMonthlyRentEgp(e.target.value)} required />
+            <Input label={t("due_day")} type="number" min={1} max={28} value={dueDay} onChange={(e) => setDueDay(Number(e.target.value))} />
+            <Input label={t("late_fee_percent")} type="number" value={lateFeePercent || ""} onChange={(e) => setLateFeePercent(Number(e.target.value))} />
+            <Input label={t("security_deposit_egp")} type="number" step="0.01" value={securityDepositEgp} onChange={(e) => setSecurityDepositEgp(e.target.value)} />
           </div>
         </form>
-      )}
-
-      <div className="bg-white rounded shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-start">
-            <tr>
-              <th className="px-4 py-3 font-medium text-start">{t("tenant")}</th>
-              <th className="px-4 py-3 font-medium text-start">{t("unit")}</th>
-              <th className="px-4 py-3 font-medium text-start">{t("period")}</th>
-              <th className="px-4 py-3 font-medium text-start">{t("rent")}</th>
-              <th className="px-4 py-3 font-medium text-start">{t("status")}</th>
-              <th className="px-4 py-3 font-medium text-start w-32">{t("actions")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data?.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
-                  {t("no_leases")}
-                </td>
-              </tr>
-            )}
-            {data?.map((l) => (
-              <tr key={l.id} className="border-t">
-                <td className="px-4 py-3">
-                  <Link
-                    to={`/leases/${l.id}`}
-                    className="text-blue-600 hover:underline"
-                  >
-                    {l.tenant_name}
-                  </Link>
-                </td>
-                <td className="px-4 py-3 text-gray-600">{l.unit_name}</td>
-                <td className="px-4 py-3 text-gray-600">
-                  {new Date(l.start_date).toLocaleDateString(language === "ar" ? "ar-EG" : "en-US")} —{" "}
-                  {new Date(l.end_date).toLocaleDateString(language === "ar" ? "ar-EG" : "en-US")}
-                </td>
-                <td className="px-4 py-3">
-                  <Money cents={l.monthly_rent_cents} />
-                </td>
-                <td className="px-4 py-3">
-                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${statusStyle(l.status)}`}>
-                    {t(`status_${l.status}`)}
-                  </span>
-                </td>
-                <td className="px-4 py-3 flex gap-2">
-                  {l.status === "active" && (
-                    <button
-                      onClick={() => {
-                        if (window.confirm(t("confirm_end_lease"))) {
-                          setMutationError(null);
-                          endMutation.mutate(l.id, {
-                            onError: (err: any) => {
-                              setMutationError(err?.response?.data?.detail || err?.message || t("operation_failed"));
-                            },
-                          });
-                        }
-                      }}
-                      className="text-yellow-600 hover:underline text-xs"
-                    >
-                      {t("end")}
-                    </button>
-                  )}
-                  <button
-                    onClick={() => {
-                      if (window.confirm(t("confirm_delete_lease"))) {
-                        setMutationError(null);
-                        deleteMutation.mutate(l.id, {
-                          onError: (err: any) => {
-                            setMutationError(err?.response?.data?.detail || err?.message || t("operation_failed"));
-                          },
-                        });
-                      }
-                    }}
-                    className="text-red-600 hover:underline text-xs"
-                  >
-                    {t("delete")}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      </Modal>
     </div>
   );
 }
-

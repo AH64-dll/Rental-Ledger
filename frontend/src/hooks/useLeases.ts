@@ -24,7 +24,7 @@ export function useCreateLease() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: {
-      unit_id: number;
+      property_id: number;
       tenant_id: number;
       start_date: string;
       end_date: string;
@@ -47,7 +47,7 @@ export function useUpdateLease() {
       ...data
     }: {
       id: number;
-      unit_id?: number;
+      property_id?: number;
       tenant_id?: number;
       start_date?: string;
       end_date?: string;

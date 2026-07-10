@@ -23,6 +23,9 @@ const translations: Record<Language, Record<string, string>> = {
     // Login page
     "login_title": "سجل الإيجارات",
     "username": "اسم المستخدم",
+    "new_username": "اسم المستخدم الجديد",
+    "change_username": "تغيير اسم المستخدم",
+    "credentials_updated_success": "تم تحديث البيانات بنجاح!",
     "password": "كلمة المرور",
     "sign_in": "تسجيل الدخول",
     "signing_in": "جاري تسجيل الدخول...",
@@ -209,7 +212,43 @@ const translations: Record<Language, Record<string, string>> = {
     
     // Language names
     "english": "English",
-    "arabic": "العربية"
+    "arabic": "العربية",
+
+    // New (redesign)
+    "no_data": "لا توجد بيانات",
+    "welcome_back": "مرحباً بعودتك",
+    "todays_date": "تاريخ اليوم",
+    "confirm_title": "هل أنت متأكد؟",
+    "delete_confirm_title": "تأكيد الحذف",
+    "language_toggle": "تبديل اللغة",
+    "optional": "(اختياري)",
+    "not_set": "غير محدد",
+    "add_first_property": "ابدأ بإضافة عقار",
+    "add_first_tenant": "ابدأ بإضافة شخص",
+    "add_first_lease": "ابدأ بإضافة عقد إيجار",
+    "properties_desc": "إدارة عقاراتك ووحداتها",
+    "tenants_desc": "إدارة الأشخاص والمستأجرين",
+    "leases_desc": "عقود الإيجار النشطة والمنتهية",
+    "charges_desc": "جميع الرسوم والمدفوعات",
+    "debts_desc": "الديون الشخصية والمستحقات",
+    "edit_property": "تعديل العقار",
+    "edit_tenant": "تعديل بيانات الشخص",
+    "confirm": "تأكيد",
+    "nothing_to_update": "لا يوجد شيء للتحديث",
+    "property_created": "تم إنشاء العقار",
+    "property_deleted": "تم حذف العقار",
+    "tenant_created": "تم إضافة الشخص",
+    "tenant_deleted": "تم حذف الشخص",
+    "tenant_updated": "تم تحديث بيانات الشخص",
+    "payment_logged": "تم تسجيل الدفعة",
+    "debt_deleted": "تم حذف الدين",
+    "debt_added": "تم إضافة الدين",
+    "lease_created": "تم إنشاء عقد الإيجار",
+    "lease_ended": "تم إنهاء عقد الإيجار",
+    "lease_deleted": "تم حذف عقد الإيجار",
+    "charge_added": "تم إضافة الرسم المالي",
+    "charge_deleted": "تم حذف الرسم المالي",
+    "back_to_list": "العودة إلى القائمة"
   },
   en: {
     // Navigation / Sidebar
@@ -225,6 +264,9 @@ const translations: Record<Language, Record<string, string>> = {
     // Login page
     "login_title": "Rental Ledger",
     "username": "Username",
+    "new_username": "New Username",
+    "change_username": "Change Username",
+    "credentials_updated_success": "Credentials updated successfully!",
     "password": "Password",
     "sign_in": "Sign In",
     "signing_in": "Signing in...",
@@ -411,7 +453,43 @@ const translations: Record<Language, Record<string, string>> = {
     
     // Language names
     "english": "English",
-    "arabic": "العربية"
+    "arabic": "العربية",
+
+    // New (redesign)
+    "no_data": "No data yet",
+    "welcome_back": "Welcome back",
+    "todays_date": "Today's date",
+    "confirm_title": "Are you sure?",
+    "delete_confirm_title": "Confirm deletion",
+    "language_toggle": "Toggle language",
+    "optional": "(optional)",
+    "not_set": "Not set",
+    "add_first_property": "Add your first property",
+    "add_first_tenant": "Add your first person",
+    "add_first_lease": "Add your first lease",
+    "properties_desc": "Manage your properties",
+    "tenants_desc": "Manage your people",
+    "leases_desc": "Active and past leases",
+    "charges_desc": "All charges and payments",
+    "debts_desc": "Personal debts and dues",
+    "edit_property": "Edit property",
+    "edit_tenant": "Edit person",
+    "confirm": "Confirm",
+    "nothing_to_update": "Nothing to update",
+    "property_created": "Property created",
+    "property_deleted": "Property deleted",
+    "tenant_created": "Person added",
+    "tenant_deleted": "Person deleted",
+    "tenant_updated": "Person updated",
+    "payment_logged": "Payment logged",
+    "debt_deleted": "Debt deleted",
+    "debt_added": "Debt added",
+    "lease_created": "Lease created",
+    "lease_ended": "Lease ended",
+    "lease_deleted": "Lease deleted",
+    "charge_added": "Charge added",
+    "charge_deleted": "Charge deleted",
+    "back_to_list": "Back to list"
   }
 };
 
