@@ -82,7 +82,7 @@ export function Dashboard() {
           {isLoading ? (
             <Skeleton className="h-7 w-40" />
           ) : data ? (
-            <p className="text-2xl font-semibold text-slate-900">
+            <p className="text-2xl font-semibold text-slate-900" aria-label={`${data.expiring_leases} ${t(data.expiring_leases === 1 ? "lease_count_singular" : "lease_count_plural")}`}>
               {data.expiring_leases}{" "}
               <span className="text-sm font-normal text-slate-500">
                 {t(data.expiring_leases === 1 ? "lease_count_singular" : "lease_count_plural")}

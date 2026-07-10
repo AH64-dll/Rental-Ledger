@@ -24,9 +24,9 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
         className={[
           "w-full h-10 rounded-lg border bg-white text-sm text-slate-900 px-3",
           "transition-colors duration-200",
-          "focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:border-indigo-500",
           "disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer",
-          error ? "border-rose-300 focus:ring-rose-500 focus:border-rose-500" : "border-slate-200",
+          error ? "border-rose-300 focus-visible:ring-rose-500 focus-visible:border-rose-500" : "border-slate-200",
           className,
         ].join(" ")}
         {...rest}

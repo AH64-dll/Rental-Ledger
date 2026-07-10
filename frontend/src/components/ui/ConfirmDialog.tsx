@@ -39,6 +39,11 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<ConfirmContextValue>(() => ({ confirm }), [confirm]);
 
+  const variant = pending?.variant ?? "primary";
+  const isDanger = variant === "danger";
+  const ICON_TONE = isDanger ? "text-rose-500 bg-rose-50" : "text-indigo-500 bg-indigo-50";
+  const BTN_TONE = isDanger ? "bg-rose-600 hover:bg-rose-700" : "bg-indigo-600 hover:bg-indigo-700";
+
   return (
     <ConfirmContext.Provider value={value}>
       {children}
@@ -53,7 +58,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
               {pending?.cancelLabel ?? "Cancel"}
             </Button>
             <Button
-              variant={pending?.variant === "danger" ? "danger" : "primary"}
+              className={BTN_TONE}
               onClick={() => handleClose(true)}
             >
               {pending?.confirmLabel ?? "Confirm"}
@@ -62,10 +67,10 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
         }
       >
         <div className="flex items-start gap-3">
-          <span className="shrink-0 mt-0.5 text-rose-500">
+          <span className={`shrink-0 mt-0.5 h-10 w-10 rounded-full flex items-center justify-center ${ICON_TONE}`}>
             <AlertCircle size={20} />
           </span>
-          <p className="text-sm text-slate-600">{pending?.message}</p>
+          <p className="text-sm text-slate-600 pt-1.5">{pending?.message}</p>
         </div>
       </Modal>
     </ConfirmContext.Provider>

@@ -31,9 +31,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
             "w-full h-10 rounded-lg border bg-white text-sm text-slate-900",
             "transition-colors duration-200",
             "placeholder:text-slate-400",
-            "focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:border-indigo-500",
             "disabled:opacity-50 disabled:cursor-not-allowed",
-            error ? "border-rose-300 focus:ring-rose-500 focus:border-rose-500" : "border-slate-200",
+            error ? "border-rose-300 focus-visible:ring-rose-500 focus-visible:border-rose-500" : "border-slate-200",
             leftIcon ? "ps-10 pe-3" : "px-3",
             className,
           ].join(" ")}

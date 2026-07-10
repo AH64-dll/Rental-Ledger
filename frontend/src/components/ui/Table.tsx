@@ -32,7 +32,7 @@ export function TBody({ className = "", children, ...rest }: HTMLAttributes<HTML
 export function TR({ className = "", children, ...rest }: HTMLAttributes<HTMLTableRowElement>) {
   return (
     <tr
-      className={["transition-colors hover:bg-slate-50", className].join(" ")}
+      className={["transition-colors hover:bg-slate-50 [&:nth-child(even)]:bg-slate-50/50", className].join(" ")}
       {...rest}
     >
       {children}
@@ -40,10 +40,11 @@ export function TR({ className = "", children, ...rest }: HTMLAttributes<HTMLTab
   );
 }
 
-export function TH({ className = "", children, ...rest }: ThHTMLAttributes<HTMLTableCellElement>) {
+export function TH({ className = "", children, scope = "col", ...rest }: ThHTMLAttributes<HTMLTableCellElement>) {
   return (
     <th
-      className={["px-4 py-3 font-semibold text-start", className].join(" ")}
+      scope={scope}
+      className={["px-4 py-3 font-semibold text-start sticky top-0 z-10 bg-slate-50", className].join(" ")}
       {...rest}
     >
       {children}

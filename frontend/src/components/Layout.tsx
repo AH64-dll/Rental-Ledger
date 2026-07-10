@@ -45,13 +45,13 @@ export function Layout() {
       <header className="md:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-30 w-full shrink-0">
         <button
           onClick={() => setIsOpen(true)}
-          className="p-1.5 rounded text-slate-600 hover:bg-slate-100 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          className="p-2 rounded-lg text-slate-600 hover:bg-slate-100 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
           aria-label={t("menu")}
         >
-          <Menu size={22} />
+          <Menu size={24} />
         </button>
-        <span className="font-semibold text-slate-900 text-sm">{t("login_title")}</span>
-        <div className="w-9" />
+        <h1 className="text-sm font-semibold text-slate-900">{t("login_title")}</h1>
+        <div className="w-10" aria-hidden="true" />
       </header>
 
       {isOpen && (

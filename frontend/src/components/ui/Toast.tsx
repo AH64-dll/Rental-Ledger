@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { X, Check, AlertCircle } from "./AppIcon";
+import { X, Check, AlertTriangle, Info } from "./AppIcon";
 
 type ToastVariant = "success" | "error" | "info" | "warning";
 
@@ -19,11 +19,18 @@ interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | undefined>(undefined);
 
-const variantStyles: Record<ToastVariant, string> = {
-  success: "bg-emerald-600 text-white",
-  error: "bg-rose-600 text-white",
-  info: "bg-slate-800 text-white",
-  warning: "bg-amber-500 text-white",
+const ICONS: Record<ToastVariant, ReactNode> = {
+  success: <Check size={20} />,
+  error: <X size={20} />,
+  info: <Info size={20} />,
+  warning: <AlertTriangle size={20} />,
+};
+
+const TONES: Record<ToastVariant, string> = {
+  success: "bg-emerald-50 border-emerald-200 text-emerald-800",
+  error: "bg-rose-50 border-rose-200 text-rose-800",
+  info: "bg-indigo-50 border-indigo-200 text-indigo-800",
+  warning: "bg-amber-50 border-amber-200 text-amber-800",
 };
 
 export function ToastProvider({ children }: { children: ReactNode }) {
@@ -63,18 +70,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                 key={t.id}
                 role="alert"
                 className={[
-                  "pointer-events-auto min-w-[260px] max-w-sm rounded-lg shadow-lg px-4 py-3 text-sm font-medium flex items-center gap-3 animate-slide-up",
-                  variantStyles[t.variant],
+                  "pointer-events-auto min-w-[260px] max-w-sm rounded-lg shadow-md border px-4 py-3 text-sm font-medium flex items-center gap-3 animate-slide-up",
+                  TONES[t.variant],
                 ].join(" ")}
               >
-                <span className="shrink-0">
-                  {t.variant === "success" ? <Check size={18} /> : <AlertCircle size={18} />}
-                </span>
+                <span className="shrink-0">{ICONS[t.variant]}</span>
                 <span className="flex-1">{t.message}</span>
                 <button
                   onClick={() => remove(t.id)}
                   aria-label="Dismiss"
-                  className="opacity-80 hover:opacity-100 transition-opacity cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  className="opacity-70 hover:opacity-100 transition-opacity cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current rounded"
                 >
                   <X size={16} />
                 </button>
