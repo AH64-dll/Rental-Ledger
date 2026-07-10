@@ -1,33 +1,13 @@
-from datetime import date
-
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth import current_user
 from app.db import get_db
 from app.models import Deposit, Lease
+from app.schemas.deposits import DepositCreate, DepositResponse
 
 router = APIRouter(prefix="/leases/{lease_id}/deposits", tags=["deposits"])
-
-
-class DepositCreate(BaseModel):
-    amount_held_cents: int
-    collected_date: date
-    notes: str | None = None
-
-
-class DepositResponse(BaseModel):
-    id: int
-    lease_id: int
-    amount_held_cents: int
-    collected_date: date
-    status: str
-    refunded_amount_cents: int
-    notes: str | None
-
-    model_config = {"from_attributes": True}
 
 
 @router.get("/", response_model=list[DepositResponse])
