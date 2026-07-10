@@ -2,6 +2,19 @@ from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.auth import current_user
+from app.routers import (
+    auth,
+    charges,
+    charges_flat,
+    dashboard,
+    deposits,
+    leases,
+    payments,
+    payments_flat,
+    properties,
+    tenants,
+    units,
+)
 
 app = FastAPI(title="Rental Ledger API", version="0.1.0")
 
@@ -13,6 +26,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(auth.router)
+app.include_router(properties.router)
+app.include_router(units.router)
+app.include_router(tenants.router)
+app.include_router(leases.router)
+app.include_router(charges.router)
+app.include_router(charges_flat.router)
+app.include_router(payments.router)
+app.include_router(payments_flat.router)
+app.include_router(dashboard.router)
+app.include_router(deposits.router)
 
 
 @app.get("/health")
