@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import enum
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Optional
 
 from sqlalchemy import Date, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text, func
@@ -91,7 +92,7 @@ class Lease(Base):
     end_date: Mapped[date] = mapped_column(Date)
     monthly_rent_cents: Mapped[int] = mapped_column(Integer, nullable=False)
     rent_due_day_of_month: Mapped[int] = mapped_column(Integer, default=1)
-    late_fee_percent: Mapped[float] = mapped_column(Numeric(5, 2), default=0)
+    late_fee_percent: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=0)
     security_deposit_cents: Mapped[int] = mapped_column(Integer, default=0)
     status: Mapped[LeaseStatus] = mapped_column(
         Enum(LeaseStatus), default=LeaseStatus.ACTIVE

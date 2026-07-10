@@ -6,33 +6,10 @@ from app.auth import current_user
 from app.db import get_db
 from app.models import Charge, Lease, Payment
 from app.schemas.charges import ChargeCreate, ChargeResponse, ChargeUpdate
-from app.services.balance import (
-    compute_paid_cents,
-    compute_balance_cents,
-    derive_charge_status,
-)
+from app.services.balance import compute_paid_cents
+from app.services.charge_response import build_charge_response
 
 router = APIRouter(prefix="/leases/{lease_id}/charges", tags=["charges"])
-
-
-def _build_charge_response(charge: Charge, paid_cents: int) -> ChargeResponse:
-    balance_cents = compute_balance_cents(charge.amount_cents, paid_cents)
-    return ChargeResponse(
-        id=charge.id,
-        lease_id=charge.lease_id,
-        tenant_id=charge.tenant_id,
-        description=charge.description,
-        amount_cents=charge.amount_cents,
-        charge_date=charge.charge_date,
-        due_date=charge.due_date,
-        category=charge.category.value if hasattr(charge.category, "value") else charge.category,
-        late_fee_applied=charge.late_fee_applied,
-        paid_cents=paid_cents,
-        balance_cents=balance_cents,
-        status=derive_charge_status(balance_cents, paid_cents, charge.due_date),
-        tenant_name=charge.tenant_relation.name if charge.tenant_relation else "",
-        created_at=charge.created_at,
-    )
 
 
 @router.get("/", response_model=list[ChargeResponse])
@@ -54,7 +31,7 @@ def list_charges(
     result = []
     for c in charges:
         paid = compute_paid_cents(db, c.id)
-        result.append(_build_charge_response(c, paid))
+        result.append(build_charge_response(c, paid))
     return result
 
 
@@ -83,7 +60,7 @@ def create_charge(
     db.refresh(charge)
 
     db.refresh(charge, attribute_names=["tenant_relation"])
-    return _build_charge_response(charge, 0)
+    return build_charge_response(charge, 0)
 
 
 @router.get("/{charge_id}", response_model=ChargeResponse)
@@ -97,7 +74,7 @@ def get_charge(
     if charge is None or charge.lease_id != lease_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Charge not found")
     paid = compute_paid_cents(db, charge.id)
-    return _build_charge_response(charge, paid)
+    return build_charge_response(charge, paid)
 
 
 @router.put("/{charge_id}", response_model=ChargeResponse)
@@ -117,7 +94,7 @@ def update_charge(
     db.commit()
     db.refresh(charge)
     paid = compute_paid_cents(db, charge.id)
-    return _build_charge_response(charge, paid)
+    return build_charge_response(charge, paid)
 
 
 @router.delete("/{charge_id}", status_code=status.HTTP_204_NO_CONTENT)

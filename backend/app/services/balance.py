@@ -22,14 +22,11 @@ def compute_balance_cents(amount_cents: int, paid_cents: int) -> int:
 def derive_charge_status(balance_cents: int, paid_cents: int, due_date: date | None) -> str:
     if balance_cents == 0:
         return "paid"
+    is_past_due = due_date is not None and due_date < date.today()
+    if is_past_due:
+        return "overdue"
     if paid_cents > 0 and balance_cents > 0:
         return "partial"
-    if paid_cents == 0:
-        if due_date and due_date < date.today():
-            return "overdue"
-        return "unpaid"
-    if due_date and due_date < date.today():
-        return "overdue"
     return "unpaid"
 
 

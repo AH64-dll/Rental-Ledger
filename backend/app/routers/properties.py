@@ -10,12 +10,22 @@ from app.schemas.properties import PropertyCreate, PropertyResponse, PropertyUpd
 router = APIRouter(prefix="/properties", tags=["properties"])
 
 
+def _property_to_response(prop: Property) -> dict:
+    data = {c.key: getattr(prop, c.key) for c in prop.__table__.columns}
+    data["units"] = [
+        {"id": u.id, "name": u.name, "notes": u.notes}
+        for u in prop.units
+    ]
+    return data
+
+
 @router.get("/", response_model=list[PropertyResponse])
 def list_properties(
     db: Session = Depends(get_db),
     _: str = Depends(current_user),
-) -> list[Property]:
-    return db.execute(select(Property).order_by(Property.name)).scalars().all()
+) -> list[dict]:
+    props = db.execute(select(Property).order_by(Property.name)).scalars().all()
+    return [_property_to_response(p) for p in props]
 
 
 @router.post("/", response_model=PropertyResponse, status_code=status.HTTP_201_CREATED)
@@ -23,12 +33,12 @@ def create_property(
     body: PropertyCreate,
     db: Session = Depends(get_db),
     _: str = Depends(current_user),
-) -> Property:
+) -> dict:
     prop = Property(**body.model_dump())
     db.add(prop)
     db.commit()
     db.refresh(prop)
-    return prop
+    return _property_to_response(prop)
 
 
 @router.get("/{prop_id}", response_model=PropertyResponse)
@@ -36,11 +46,11 @@ def get_property(
     prop_id: int,
     db: Session = Depends(get_db),
     _: str = Depends(current_user),
-) -> Property:
+) -> dict:
     prop = db.get(Property, prop_id)
     if prop is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
-    return prop
+    return _property_to_response(prop)
 
 
 @router.put("/{prop_id}", response_model=PropertyResponse)
@@ -49,7 +59,7 @@ def update_property(
     body: PropertyUpdate,
     db: Session = Depends(get_db),
     _: str = Depends(current_user),
-) -> Property:
+) -> dict:
     prop = db.get(Property, prop_id)
     if prop is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
@@ -58,7 +68,7 @@ def update_property(
         setattr(prop, key, value)
     db.commit()
     db.refresh(prop)
-    return prop
+    return _property_to_response(prop)
 
 
 @router.delete("/{prop_id}", status_code=status.HTTP_204_NO_CONTENT)
