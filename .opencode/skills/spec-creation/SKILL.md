@@ -1,3 +1,8 @@
+---
+name: spec-creation
+description: "Use when acting as BSA to produce specs/RENT-N-<slug>.md from specs_templates/spec_template.md. Fills objective, user stories, acceptance criteria, definition of done, pattern references, low-level tasks, testing strategy, PR template, demo script."
+---
+
 # Skill: spec-creation
 
 Use when acting as BSA to produce `specs/RENT-N-<slug>.md`.

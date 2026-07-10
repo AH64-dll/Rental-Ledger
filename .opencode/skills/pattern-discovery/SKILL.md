@@ -1,3 +1,8 @@
+---
+name: pattern-discovery
+description: "Use BEFORE any implementation in rental-ledger. Search patterns_library/, the codebase, and session history for reusable code. Create new only when no reuse exists. System Architect validates. MANDATORY before writing new code."
+---
+
 # Skill: pattern-discovery
 
 Use BEFORE any implementation. "Search First, Reuse Always, Create Only When Necessary."

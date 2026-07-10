@@ -42,7 +42,7 @@ Stop-the-Line gate, QAS independence (always a separate dispatch, never self-QA)
 
 ## 6. Linear integration
 
-Linear MCP server is configured via `.opencode/mcp.json` (copied from the committed
-`.opencode/mcp.example.json` template; the real file is gitignored to keep your key out of git).
-It runs `@anthropic/linear-mcp-server` with `LINEAR_API_KEY` from the environment. Every gate
-completion posts evidence (test output, status) as a Linear comment.
+Linear MCP server is configured in `.opencode/opencode.json` under the `mcp`
+key (the `@anthropic/linear-mcp-server` runs as a local MCP server, with
+`LINEAR_API_KEY` interpolated from your environment via `{env:LINEAR_API_KEY}`).
+Every gate completion posts evidence (test output, status) as a Linear comment.
