@@ -466,7 +466,7 @@ export function TenantProfile() {
           </>
         }
       >
-        <form onSubmit={handleUpdate} className="space-y-4">
+        <form onSubmit={handleUpdate} noValidate className="space-y-4">
           <Input label={t("name")} value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
           <Input label={`${t("email")} ${t("optional")}`} type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           <Input label={`${t("phone")} ${t("optional")}`} value={phone} onChange={(e) => setPhone(e.target.value)} />
@@ -488,7 +488,7 @@ export function TenantProfile() {
           </>
         }
       >
-        <form onSubmit={handleCreateLease} className="space-y-4">
+        <form onSubmit={handleCreateLease} noValidate className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select
               label={t("property")}

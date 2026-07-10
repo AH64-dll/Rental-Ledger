@@ -158,7 +158,7 @@ export function PropertiesList() {
           </>
         }
       >
-        <form onSubmit={handleCreate} className="space-y-4">
+        <form onSubmit={handleCreate} noValidate className="space-y-4">
           <Input
             label={t("property_name")}
             value={name}
