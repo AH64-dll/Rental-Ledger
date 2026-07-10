@@ -3,6 +3,13 @@ import { render, screen } from "@testing-library/react";
 import { StatusPill } from "./StatusPill";
 import { LanguageProvider } from "../context/LanguageContext";
 
+const ENGLISH_TRANSLATIONS = {
+  paid: "Paid",
+  partial: "Partial",
+  unpaid: "Unpaid",
+  overdue: "Overdue",
+};
+
 const ARABIC_TRANSLATIONS = {
   paid: "مدفوع",
   partial: "جزئي",
@@ -19,7 +26,7 @@ describe("StatusPill", () => {
           <StatusPill status={status} />
         </LanguageProvider>
       );
-      expect(screen.getByText(status)).toBeTruthy();
+      expect(screen.getByText(ENGLISH_TRANSLATIONS[status])).toBeTruthy();
     }
   );
 

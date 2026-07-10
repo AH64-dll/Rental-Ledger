@@ -412,13 +412,13 @@ const translations: Record<Language, Record<string, string>> = {
     "collected": "Collected",
 
     // Statuses
-    "status_paid": "paid",
-    "status_partial": "partial",
-    "status_unpaid": "unpaid",
-    "status_overdue": "overdue",
-    "status_active": "active",
-    "status_ended": "ended",
-    "status_expired": "expired",
+    "status_paid": "Paid",
+    "status_partial": "Partial",
+    "status_unpaid": "Unpaid",
+    "status_overdue": "Overdue",
+    "status_active": "Active",
+    "status_ended": "Ended",
+    "status_expired": "Expired",
 
     // Settings
     "settings": "Settings",

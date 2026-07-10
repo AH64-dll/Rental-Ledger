@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "./AppIcon";
 
@@ -9,29 +9,67 @@ interface ModalProps {
   description?: string;
   children: ReactNode;
   footer?: ReactNode;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
 }
 
 const sizeClasses = {
   sm: "max-w-sm",
   md: "max-w-lg",
   lg: "max-w-2xl",
+  xl: "max-w-4xl",
 };
 
 export function Modal({ open, onClose, title, description, children, footer, size = "md" }: ModalProps) {
+  const titleId = useId();
+  const descId = useId();
   const overlayRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const previousFocus = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+    previousFocus.current = document.activeElement as HTMLElement | null;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key === "Tab" && panelRef.current) {
+        const focusables = panelRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        const active = document.activeElement as HTMLElement | null;
+        if (e.shiftKey) {
+          if (active === first || !panelRef.current.contains(active)) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (active === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
     };
-    document.addEventListener("keydown", onKey);
+    document.addEventListener("keydown", handleKey);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const focusTimer = setTimeout(() => {
+      if (!panelRef.current) return;
+      const first = panelRef.current.querySelector<HTMLElement>(
+        'input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([aria-label="Close"])'
+      );
+      (first ?? panelRef.current).focus();
+    }, 30);
     return () => {
-      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("keydown", handleKey);
       document.body.style.overflow = prevOverflow;
+      clearTimeout(focusTimer);
+      previousFocus.current?.focus?.();
     };
   }, [open, onClose]);
 
@@ -46,11 +84,14 @@ export function Modal({ open, onClose, title, description, children, footer, siz
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in"
       role="dialog"
       aria-modal="true"
-      aria-labelledby={title ? "modal-title" : undefined}
+      aria-labelledby={title ? titleId : undefined}
+      aria-describedby={description ? descId : undefined}
     >
       <div
+        ref={panelRef}
+        tabIndex={-1}
         className={[
-          "w-full bg-white rounded-2xl shadow-2xl animate-scale-in",
+          "w-full bg-white rounded-2xl shadow-2xl animate-scale-in outline-none",
           "max-h-[90vh] flex flex-col",
           sizeClasses[size],
         ].join(" ")}
@@ -59,11 +100,11 @@ export function Modal({ open, onClose, title, description, children, footer, siz
           <div className="px-6 py-4 border-b border-slate-200 flex items-start justify-between gap-4">
             <div>
               {title && (
-                <h2 id="modal-title" className="text-lg font-semibold text-slate-900 tracking-tight">
+                <h2 id={titleId} className="text-lg font-semibold text-slate-900 tracking-tight">
                   {title}
                 </h2>
               )}
-              {description && <p className="mt-1 text-sm text-slate-500">{description}</p>}
+              {description && <p id={descId} className="mt-1 text-sm text-slate-500">{description}</p>}
             </div>
             <button
               onClick={onClose}

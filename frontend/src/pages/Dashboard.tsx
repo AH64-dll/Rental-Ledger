@@ -67,7 +67,7 @@ export function Dashboard() {
           icon={<TrendingUp size={20} />}
           label={t("deposits_held")}
           value={data ? <Money cents={data.deposits_held_cents} /> : undefined}
-          tone="amber"
+          tone="emerald"
         />
       </div>
 

@@ -15,7 +15,7 @@ import { Select } from "../components/ui/Select";
 import { Table, THead, TBody, TR, TH, TD } from "../components/ui/Table";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Skeleton } from "../components/ui/Skeleton";
-import { Receipt, DollarSign } from "../components/ui/AppIcon";
+import { Receipt, DollarSign, Trash2 } from "../components/ui/AppIcon";
 
 export function ChargesList() {
   const [tenantFilter, setTenantFilter] = useState<string>("");
@@ -218,7 +218,7 @@ export function ChargesList() {
                           aria-label={t("delete")}
                           className="p-1.5 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
                         >
-                          <Receipt size={16} />
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     )}
