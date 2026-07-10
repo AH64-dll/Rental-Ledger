@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.auth import current_user
 from app.db import get_db
-from app.models import Charge, Lease, Tenant, Unit
+from app.models import Charge, Lease, LeaseStatus, Tenant, Unit
 from app.schemas.leases import LeaseCreate, LeaseResponse, LeaseUpdate
 
 router = APIRouter(prefix="/leases", tags=["leases"])
@@ -134,7 +134,7 @@ def end_lease(
     lease = db.get(Lease, lease_id)
     if lease is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lease not found")
-    lease.status = "ended"
+    lease.status = LeaseStatus.ENDED
     db.commit()
     db.refresh(lease)
     return _build_lease_response(lease)
