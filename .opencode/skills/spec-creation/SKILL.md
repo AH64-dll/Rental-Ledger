@@ -12,7 +12,7 @@ Use when acting as BSA to produce `specs/RENT-N-<slug>.md`.
 2. Fill every section: Objective, User Stories, Acceptance Criteria (AC), Definition of Done (DoD), Pattern References, Low-level Tasks, Testing Strategy, PR Template, Demo Script.
 3. Run pattern-discovery and cite real files in Pattern References.
 4. AC must be testable (each item maps to a test or a manual check).
-5. Save to `specs/RENT-N-<slug>.md` and post the path + AC summary to Linear.
+5. Save to `specs/RENT-N-<slug>.md`. Return the path + AC summary; the primary agent posts it as a GitHub Issue comment.
 
 ## Stop-the-Line
 The spec is blocked from implementation until it has explicit AC and DoD.

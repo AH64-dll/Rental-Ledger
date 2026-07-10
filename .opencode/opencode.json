@@ -3,15 +3,5 @@
   "instructions": [".opencode/plugins/SAW_WORKFLOW.md"],
   "skills": {
     "paths": [".opencode/skills"]
-  },
-  "mcp": {
-    "linear": {
-      "type": "local",
-      "command": ["npx", "-y", "@anthropic/linear-mcp-server"],
-      "enabled": true,
-      "env": {
-        "LINEAR_API_KEY": "{env:LINEAR_API_KEY}"
-      }
-    }
   }
 }

@@ -16,12 +16,12 @@ Roles are OpenCode custom agents at `.opencode/agents/<role>.md`, dispatched wit
 
 ## 3. The gated workflow (vNext contract)
 
-1. User creates Linear ticket `RENT-N` with a one-line feature request.
+1. **User (POPM/HITL)** creates a GitHub Issue labeled `RENT-N` with a one-line feature request.
 2. OpenCode dispatches **BSA** → writes `specs/RENT-N-<slug>.md` (from `specs_templates/spec_template.md`), runs **pattern-discovery**, defines AC/DoD.
 3. **STOP-THE-LINE GATE (hard, blocking):** before any implementation, the spec must have AC/DoD. If missing → stop, back to BSA.
 4. OpenCode dispatches **BE Developer** and/or **FE Developer** on branch `rent-N-<slug>`. Exit state: "Ready for QAS".
-5. **QAS** runs tests (`pytest` + `vitest`), posts evidence to the Linear ticket via the Linear MCP. May bounce back. Exit: "Approved for RTE".
-6. (RTE collapsed) OpenCode opens the PR, assembles evidence in the PR body.
+5. **QAS** runs tests (`pytest` + `vitest`), posts evidence as a comment on the GitHub Issue. May bounce back. Exit: "Approved for RTE".
+6. (RTE collapsed) OpenCode opens the PR from the spec, assembles evidence in the PR body.
 7. **3-STAGE PR REVIEW:**
    - Stage 1: **System Architect** → pattern/technical check.
    - Stage 2: **ARCHitect-in-CLI** → architecture/security check.
@@ -30,7 +30,7 @@ Roles are OpenCode custom agents at `.opencode/agents/<role>.md`, dispatched wit
 
 ## 4. Invariants that never relax
 
-Stop-the-Line gate, QAS independence (always a separate dispatch, never self-QA), Security Engineer independence, evidence in Linear, HITL merge authority.
+Stop-the-Line gate, QAS independence (always a separate dispatch, never self-QA), Security Engineer independence, evidence posted to the GitHub Issue, HITL merge authority.
 
 ## 5. Pattern Discovery Protocol (MANDATORY before implementation)
 
@@ -40,9 +40,9 @@ Stop-the-Line gate, QAS independence (always a separate dispatch, never self-QA)
 4. Only create new code if no reuse found.
 5. System Architect validates the choice.
 
-## 6. Linear integration
+## 6. GitHub Issues tracking
 
-Linear MCP server is configured in `.opencode/opencode.json` under the `mcp`
-key (the `@anthropic/linear-mcp-server` runs as a local MCP server, with
-`LINEAR_API_KEY` interpolated from your environment via `{env:LINEAR_API_KEY}`).
-Every gate completion posts evidence (test output, status) as a Linear comment.
+Tickets are GitHub Issues on `https://github.com/AH64-dll/Rental-Ledger`, labeled `RENT-N`.
+Each gate completion posts evidence (test output, status) as an issue comment. The primary
+agent (OpenCode) handles GitHub interaction; subagents return evidence which the primary
+agent posts to the issue.

@@ -33,9 +33,9 @@ This project uses the SAFe Agentic Workflow (SAW) adapted to the OpenCode CLI.
 - Roles (7): [`.opencode/agents/`](.opencode/agents/) — `bsa`, `system-architect`,
   `be-developer`, `fe-developer`, `qas`, `security-engineer`, `architect-in-cli`.
 - Skills: [`.opencode/skills/`](.opencode/skills/) — `pattern-discovery`, `spec-creation`.
-- Linear MCP: configured in [`.opencode/opencode.json`](.opencode/opencode.json) under the
-  `mcp.linear` key. Set `LINEAR_API_KEY` in your shell environment (or `.env`); OpenCode
-  passes it to the MCP server via `{env:LINEAR_API_KEY}` interpolation.
+- GitHub Issues on [the repo](https://github.com/AH64-dll/Rental-Ledger) serve as the ticket tracker
+  (label `RENT-N` per ticket). Subagents return evidence; the primary OpenCode agent posts
+  it as issue comments.
 
 > Note: the cloned `AGENTS.md`, `docs/sop/`, and `patterns_library/` come from the
 > SAW template and still contain some `{{PLACEHOLDER}}` tokens (e.g. `{{TICKET_PREFIX}}`,
