@@ -1,0 +1,28 @@
+# OpenCode / secrets
+.opencode/mcp.json
+.env
+.env.*
+!.env.example
+
+# Python
+*.pyc
+__pycache__/
+.venv/
+backend/.venv/
+backend/alembic/versions/__pycache__/
+check_alembic.db
+
+# Node / Vite
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+.vite/
+
+# OS / editors
+.DS_Store
+.vscode/
+.idea/
+
+# Godot (unrelated, just in case)
+.godot/
