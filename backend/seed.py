@@ -11,7 +11,16 @@ from sqlalchemy import select
 
 from app.auth import hash_password
 from app.db import Base, SessionLocal, engine
-from app.models import User
+from app.models import (  # noqa: F401
+    Charge,
+    Deposit,
+    Lease,
+    Payment,
+    Property,
+    Tenant,
+    Unit,
+    User,
+)
 
 
 def main() -> None:
