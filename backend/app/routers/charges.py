@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy import select, func as sa_func
+from sqlalchemy.orm import Session, joinedload
 
 from app.auth import current_user
 from app.db import get_db
@@ -22,17 +22,19 @@ def list_charges(
     if lease is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lease not found")
 
-    charges = db.execute(
-        select(Charge)
+    results = db.execute(
+        select(
+            Charge,
+            sa_func.coalesce(sa_func.sum(Payment.amount_cents), 0).label("paid_cents"),
+        )
+        .outerjoin(Payment, Payment.charge_id == Charge.id)
         .where(Charge.lease_id == lease_id)
+        .group_by(Charge.id)
+        .options(joinedload(Charge.tenant_relation))
         .order_by(Charge.charge_date.desc())
-    ).scalars().all()
+    ).all()
 
-    result = []
-    for c in charges:
-        paid = compute_paid_cents(db, c.id)
-        result.append(build_charge_response(c, paid))
-    return result
+    return [build_charge_response(c, int(paid)) for c, paid in results]
 
 
 @router.post("/", response_model=ChargeResponse, status_code=status.HTTP_201_CREATED)
