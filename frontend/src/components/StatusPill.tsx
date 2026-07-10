@@ -1,16 +1,27 @@
-type Status = "paid" | "partial" | "unpaid" | "overdue";
+import { useLanguage } from "../context/LanguageContext";
+import { Badge } from "./ui/Badge";
 
-const COLORS: Record<Status, string> = {
-  paid: "bg-green-100 text-green-800",
-  partial: "bg-yellow-100 text-yellow-800",
-  unpaid: "bg-gray-100 text-gray-800",
-  overdue: "bg-red-100 text-red-800",
-};
+export type ChargeStatus = "paid" | "partial" | "unpaid" | "overdue";
+export type LeaseStatus = "active" | "ended" | "expired";
 
-export function StatusPill({ status }: { status: Status }) {
-  return (
-    <span className={`px-2 py-0.5 rounded text-xs font-medium ${COLORS[status]}`}>
-      {status}
-    </span>
-  );
+const CHARGE_VARIANT = {
+  paid: "success",
+  partial: "warning",
+  unpaid: "neutral",
+  overdue: "danger",
+} as const;
+
+const LEASE_VARIANT = {
+  active: "success",
+  ended: "neutral",
+  expired: "danger",
+} as const;
+
+export function StatusPill({ status }: { status: ChargeStatus | LeaseStatus }) {
+  const { t } = useLanguage();
+  const isLease = status === "active" || status === "ended" || status === "expired";
+  const variant = isLease
+    ? LEASE_VARIANT[status as LeaseStatus]
+    : CHARGE_VARIANT[status as ChargeStatus];
+  return <Badge variant={variant}>{t(`status_${status}`)}</Badge>;
 }

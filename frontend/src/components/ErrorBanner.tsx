@@ -1,3 +1,5 @@
+import { AlertCircle } from "./ui/AppIcon";
+
 interface ErrorBannerProps {
   error: unknown;
 }
@@ -5,12 +7,16 @@ interface ErrorBannerProps {
 export function ErrorBanner({ error }: ErrorBannerProps) {
   if (!error) return null;
   const message =
-    (error as any)?.response?.data?.detail ||
-    (error as any)?.message ||
+    (error as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail ||
+    (error as { message?: string })?.message ||
     "An unexpected error occurred.";
   return (
-    <div className="bg-red-50 border border-red-200 text-red-800 rounded px-4 py-3 text-sm mb-4">
-      {typeof message === "string" ? message : JSON.stringify(message)}
+    <div
+      role="alert"
+      className="flex items-start gap-2 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg px-4 py-3 text-sm mb-4"
+    >
+      <AlertCircle size={18} className="shrink-0 mt-0.5" />
+      <span>{typeof message === "string" ? message : JSON.stringify(message)}</span>
     </div>
   );
 }

@@ -1,16 +1,28 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Link, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useMe } from "../hooks/useAuth";
 import { useLanguage } from "../context/LanguageContext";
+import {
+  Home,
+  Building2,
+  Users,
+  FileText,
+  Receipt,
+  AlertCircle,
+  Settings,
+  Menu,
+  X,
+  LogOut,
+} from "./ui/AppIcon";
 
-const NAV_ITEMS = [
-  { to: "/dashboard", key: "nav_dashboard" },
-  { to: "/properties", key: "nav_properties" },
-  { to: "/tenants", key: "nav_tenants" },
-  { to: "/leases", key: "nav_leases" },
-  { to: "/charges", key: "nav_charges" },
-  { to: "/debts", key: "nav_debts" },
-  { to: "/settings", key: "nav_settings" },
+const NAV_ITEMS: { to: string; key: string; icon: ReactNode }[] = [
+  { to: "/dashboard", key: "nav_dashboard", icon: <Home size={20} /> },
+  { to: "/properties", key: "nav_properties", icon: <Building2 size={20} /> },
+  { to: "/tenants", key: "nav_tenants", icon: <Users size={20} /> },
+  { to: "/leases", key: "nav_leases", icon: <FileText size={20} /> },
+  { to: "/charges", key: "nav_charges", icon: <Receipt size={20} /> },
+  { to: "/debts", key: "nav_debts", icon: <AlertCircle size={20} /> },
+  { to: "/settings", key: "nav_settings", icon: <Settings size={20} /> },
 ];
 
 export function Layout() {
@@ -25,131 +37,126 @@ export function Layout() {
     navigate("/login");
   };
 
-  const closeSidebar = () => {
-    setIsOpen(false);
-  };
+  const closeSidebar = () => setIsOpen(false);
+  const otherLang = language === "ar" ? "en" : "ar";
 
   return (
-    <div className="flex flex-col md:flex-row h-screen bg-gray-50 overflow-hidden">
-      {/* Mobile Top Navbar */}
-      <header className="md:hidden bg-white border-b px-4 py-3 flex items-center justify-between sticky top-0 z-30 w-full shrink-0">
+    <div className="flex flex-col md:flex-row h-screen bg-slate-50 overflow-hidden">
+      <header className="md:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-30 w-full shrink-0">
         <button
           onClick={() => setIsOpen(true)}
-          className="p-1 rounded hover:bg-gray-100 focus:outline-none"
-          aria-label="Menu"
+          className="p-1.5 rounded text-slate-600 hover:bg-slate-100 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          aria-label={t("menu")}
         >
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M4 6h16M4 12h16M4 18h16"
-            />
-          </svg>
+          <Menu size={22} />
         </button>
-        <span className="font-bold text-sm">{t("login_title")}</span>
-        <div className="w-8" />
+        <span className="font-semibold text-slate-900 text-sm">{t("login_title")}</span>
+        <div className="w-9" />
       </header>
 
-      {/* Backdrop overlay for mobile drawer */}
       {isOpen && (
         <div
           onClick={closeSidebar}
-          className="fixed inset-0 bg-black/40 z-40 md:hidden"
+          className="fixed inset-0 bg-slate-900/50 z-40 md:hidden animate-fade-in"
         />
       )}
 
-      {/* Responsive Sidebar Drawer */}
       <aside
-        className={`fixed top-0 bottom-0 w-56 bg-white border-e p-4 flex flex-col justify-between z-50 transition-transform duration-300 shadow-lg md:shadow-none md:static md:translate-x-0 shrink-0 h-full
-          ${language === "ar" ? "right-0" : "left-0"}
-          ${isOpen ? "translate-x-0" : (language === "ar" ? "translate-x-full" : "-translate-x-full")}
-        `}
+        className={[
+          "fixed top-0 bottom-0 w-64 bg-white border-s border-slate-200 p-4 flex flex-col z-50",
+          "transition-transform duration-300 ease-in-out md:static md:translate-x-0 shrink-0 h-full",
+          language === "ar" ? "right-0" : "left-0",
+          isOpen
+            ? "translate-x-0"
+            : language === "ar"
+            ? "translate-x-full"
+            : "-translate-x-full",
+          "md:shadow-none shadow-xl",
+        ].join(" ")}
       >
-        <div>
-          <div className="flex items-center justify-between mb-6 md:block">
-            <h1 className="text-lg font-bold">{t("login_title")}</h1>
-            <button
-              onClick={closeSidebar}
-              className="md:hidden p-1 rounded hover:bg-gray-100 text-gray-500"
-              aria-label="Close menu"
-            >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold">
+              R
+            </div>
+            <h1 className="text-base font-semibold text-slate-900">{t("login_title")}</h1>
           </div>
-          <nav className="flex flex-col gap-1">
-            {NAV_ITEMS.map((item) => {
-              const isActive = location.pathname.startsWith(item.to);
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  onClick={closeSidebar}
-                  className={`px-3 py-2 rounded text-sm block ${
-                    isActive
-                      ? "bg-blue-100 text-blue-800 font-medium"
-                      : "hover:bg-gray-100"
-                  }`}
-                >
-                  {t(item.key)}
-                </Link>
-              );
-            })}
-          </nav>
+          <button
+            onClick={closeSidebar}
+            className="md:hidden p-1.5 rounded text-slate-500 hover:bg-slate-100 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+            aria-label={t("close_menu")}
+          >
+            <X size={20} />
+          </button>
         </div>
 
-        <div>
-          {/* Language Switcher Toggle */}
-          <div className="my-4 border-t pt-4">
-            <div className="flex items-center justify-between text-xs text-gray-600">
-              <span className="font-medium">
-                {language === "ar" ? "العربية (Arabic)" : "English"}
-              </span>
-              <button
-                onClick={() => { setLanguage(language === "ar" ? "en" : "ar"); closeSidebar(); }}
-                className={`w-10 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors duration-300 ${
-                  language === "ar" ? "bg-blue-600 justify-end" : "bg-gray-300 justify-start"
-                }`}
-                title={language === "ar" ? "تغيير اللغة إلى الإنجليزية" : "Switch language to Arabic"}
+        <nav className="flex-1 flex flex-col gap-1">
+          {NAV_ITEMS.map((item) => {
+            const isActive = location.pathname.startsWith(item.to);
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                onClick={closeSidebar}
+                className={[
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors cursor-pointer",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
+                  isActive
+                    ? "bg-indigo-50 text-indigo-700 font-semibold border-s-2 border-indigo-500"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
+                ].join(" ")}
+                aria-current={isActive ? "page" : undefined}
               >
-                <div className="bg-white w-4 h-4 rounded-full shadow-md" />
-              </button>
-            </div>
+                <span className={isActive ? "text-indigo-600" : "text-slate-400"}>
+                  {item.icon}
+                </span>
+                <span>{t(item.key)}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="border-t border-slate-200 pt-3 space-y-2">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-xs text-slate-500 font-medium">
+              {language === "ar" ? "العربية" : "English"}
+            </span>
+            <button
+              onClick={() => {
+                setLanguage(otherLang);
+                closeSidebar();
+              }}
+              className="text-xs font-medium text-indigo-600 hover:text-indigo-700 px-2 py-1 rounded hover:bg-indigo-50 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              title={language === "ar" ? "تغيير اللغة إلى الإنجليزية" : "Switch language to Arabic"}
+            >
+              {otherLang === "ar" ? "العربية" : "English"}
+            </button>
           </div>
 
-          <div className="text-xs text-gray-500 border-t pt-3 flex justify-between items-center">
-            <span>{user?.username}</span>
+          <div className="flex items-center justify-between px-1 pt-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="h-8 w-8 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-semibold shrink-0">
+                {user?.username?.charAt(0).toUpperCase() ?? "?"}
+              </div>
+              <span className="text-sm text-slate-700 truncate">{user?.username}</span>
+            </div>
             <button
               onClick={logout}
-              className="ms-2 text-blue-600 hover:underline"
+              className="p-1.5 rounded text-slate-500 hover:bg-slate-100 hover:text-rose-600 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              aria-label={t("logout")}
+              title={t("logout")}
             >
-              {t("logout")}
+              <LogOut size={18} />
             </button>
           </div>
         </div>
       </aside>
 
-      <main className="flex-1 overflow-auto p-4 md:p-6 w-full h-full">
-        <Outlet />
+      <main className="flex-1 overflow-auto w-full h-full">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 animate-fade-in">
+          <Outlet />
+        </div>
       </main>
     </div>
   );
 }
-
