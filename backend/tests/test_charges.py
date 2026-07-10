@@ -1,14 +1,12 @@
 def _setup_lease(client, headers):
     prop = client.post("/properties/", json={"name": "Test Property"}, headers=headers)
     prop_id = prop.json()["id"]
-    unit = client.post(f"/properties/{prop_id}/units/", json={"name": "Unit A"}, headers=headers)
-    unit_id = unit.json()["id"]
     tenant = client.post("/tenants/", json={"name": "John Doe"}, headers=headers)
     tenant_id = tenant.json()["id"]
     lease = client.post(
         "/leases/",
         json={
-            "unit_id": unit_id,
+            "property_id": prop_id,
             "tenant_id": tenant_id,
             "start_date": "2026-01-01",
             "end_date": "2026-12-31",

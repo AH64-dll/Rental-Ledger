@@ -13,7 +13,6 @@ from app.routers import (
     payments_flat,
     properties,
     tenants,
-    units,
 )
 
 app = FastAPI(title="Rental Ledger API", version="0.1.0")
@@ -29,7 +28,6 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(properties.router)
-app.include_router(units.router)
 app.include_router(tenants.router)
 app.include_router(leases.router)
 app.include_router(charges.router)

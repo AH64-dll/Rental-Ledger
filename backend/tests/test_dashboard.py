@@ -12,14 +12,12 @@ def test_dashboard_empty(client, auth_headers):
 def test_dashboard_with_data(client, auth_headers):
     prop = client.post("/properties/", json={"name": "Test"}, headers=auth_headers)
     prop_id = prop.json()["id"]
-    unit = client.post(f"/properties/{prop_id}/units/", json={"name": "Unit A"}, headers=auth_headers)
-    unit_id = unit.json()["id"]
     tenant = client.post("/tenants/", json={"name": "John"}, headers=auth_headers)
     tenant_id = tenant.json()["id"]
     lease = client.post(
         "/leases/",
         json={
-            "unit_id": unit_id,
+            "property_id": prop_id,
             "tenant_id": tenant_id,
             "start_date": "2026-01-01",
             "end_date": "2026-12-31",

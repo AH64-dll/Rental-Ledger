@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 
 class LeaseCreate(BaseModel):
-    unit_id: int
+    property_id: int
     tenant_id: int
     start_date: date
     end_date: date
@@ -25,7 +25,7 @@ class LeaseUpdate(BaseModel):
 
 class LeaseResponse(BaseModel):
     id: int
-    unit_id: int
+    property_id: int
     tenant_id: int
     start_date: date
     end_date: date
@@ -35,7 +35,7 @@ class LeaseResponse(BaseModel):
     security_deposit_cents: int
     status: str
     tenant_name: str
-    unit_name: str
+    property_name: str
     created_at: datetime
 
     model_config = {"from_attributes": True}

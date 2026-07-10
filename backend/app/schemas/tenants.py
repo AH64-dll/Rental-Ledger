@@ -31,6 +31,8 @@ class TenantResponse(BaseModel):
 
 
 class ChargeSummary(BaseModel):
+    id: int
+    lease_id: int | None
     description: str
     amount_cents: int
     paid_cents: int

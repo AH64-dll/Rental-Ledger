@@ -33,11 +33,25 @@ def test_update_property(client, auth_headers):
     assert resp.json()["name"] == "Sunset Villa Updated"
 
 
-def test_delete_property_409_with_units(client, auth_headers):
+def test_delete_property_409_with_leases(client, auth_headers):
     resp = client.post("/properties/", json={"name": "Sunset Villa"}, headers=auth_headers)
     prop_id = resp.json()["id"]
 
-    client.post(f"/properties/{prop_id}/units/", json={"name": "Unit A"}, headers=auth_headers)
+    tenant = client.post("/tenants/", json={"name": "Tenant A"}, headers=auth_headers)
+    tenant_id = tenant.json()["id"]
+
+    client.post(
+        "/leases/",
+        json={
+            "property_id": prop_id,
+            "tenant_id": tenant_id,
+            "start_date": "2026-01-01",
+            "end_date": "2026-12-31",
+            "monthly_rent_cents": 100000,
+            "rent_due_day_of_month": 1,
+        },
+        headers=auth_headers,
+    )
 
     resp = client.delete(f"/properties/{prop_id}", headers=auth_headers)
     assert resp.status_code == 409

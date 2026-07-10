@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, func as sa_func
 from sqlalchemy.orm import Session
 
 from app.auth import current_user
 from app.db import get_db
-from app.models import Charge, Lease, Tenant
+from app.models import Charge, Lease, Tenant, Payment
 from app.schemas.tenants import (
     ChargeSummary,
     TenantBalanceResponse,
@@ -13,7 +13,6 @@ from app.schemas.tenants import (
     TenantUpdate,
 )
 from app.services.balance import (
-    compute_paid_cents,
     compute_balance_cents,
     compute_tenant_balance,
     derive_charge_status,
@@ -51,7 +50,9 @@ def get_tenant(
 ) -> Tenant:
     tenant = db.get(Tenant, tenant_id)
     if tenant is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found"
+        )
     return tenant
 
 
@@ -64,7 +65,9 @@ def update_tenant(
 ) -> Tenant:
     tenant = db.get(Tenant, tenant_id)
     if tenant is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found"
+        )
     update_data = body.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(tenant, key, value)
@@ -81,14 +84,19 @@ def delete_tenant(
 ) -> None:
     tenant = db.get(Tenant, tenant_id)
     if tenant is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
-    active_leases = db.execute(
-        select(Lease).where(Lease.tenant_id == tenant_id, Lease.status == "active")
-    ).first()
-    if active_leases:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found"
+        )
+    has_leases = db.execute(
+        select(Lease.id).where(Lease.tenant_id == tenant_id)
+    ).first() is not None
+    has_charges = db.execute(
+        select(Charge.id).where(Charge.tenant_id == tenant_id)
+    ).first() is not None
+    if has_leases or has_charges:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Cannot delete tenant with active leases. End the leases first.",
+            detail="Cannot delete tenant with historical leases or charges. They must be deleted first.",
         )
     db.delete(tenant)
     db.commit()
@@ -102,21 +110,35 @@ def get_tenant_balance(
 ) -> TenantBalanceResponse:
     tenant = db.get(Tenant, tenant_id)
     if tenant is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found"
+        )
 
     balance = compute_tenant_balance(db, tenant_id)
 
-    charges_q = db.execute(
-        select(Charge).where(Charge.tenant_id == tenant_id).order_by(Charge.charge_date)
-    ).scalars().all()
+    charges_q = (
+        db.execute(
+            select(
+                Charge,
+                sa_func.coalesce(sa_func.sum(Payment.amount_cents), 0).label("paid_cents")
+            )
+            .outerjoin(Payment)
+            .where(Charge.tenant_id == tenant_id)
+            .group_by(Charge.id)
+            .order_by(Charge.charge_date)
+        )
+        .all()
+    )
 
     charge_summaries = []
-    for c in charges_q:
-        paid = compute_paid_cents(db, c.id)
+    for c, paid_cents in charges_q:
+        paid = int(paid_cents)
         balance_c = compute_balance_cents(c.amount_cents, paid)
         st = derive_charge_status(balance_c, paid, c.due_date)
         charge_summaries.append(
             ChargeSummary(
+                id=c.id,
+                lease_id=c.lease_id,
                 description=c.description,
                 amount_cents=c.amount_cents,
                 paid_cents=paid,

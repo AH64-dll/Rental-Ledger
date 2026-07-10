@@ -5,7 +5,17 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import Date, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text, func
+from sqlalchemy import (
+    Date,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -51,19 +61,7 @@ class Property(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
-    units: Mapped[list["Unit"]] = relationship("Unit", back_populates="property")
-
-
-class Unit(Base):
-    __tablename__ = "units"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    property_id: Mapped[int] = mapped_column(ForeignKey("properties.id"), nullable=False)
-    name: Mapped[str] = mapped_column(String(255))
-    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-
-    property: Mapped["Property"] = relationship("Property", back_populates="units")
-    leases: Mapped[list["Lease"]] = relationship("Lease", back_populates="unit")
+    leases: Mapped[list["Lease"]] = relationship("Lease", back_populates="property")
 
 
 class Tenant(Base):
@@ -79,14 +77,16 @@ class Tenant(Base):
     )
 
     leases: Mapped[list["Lease"]] = relationship("Lease", back_populates="tenant")
-    charges: Mapped[list["Charge"]] = relationship("Charge", back_populates="tenant_relation")
+    charges: Mapped[list["Charge"]] = relationship(
+        "Charge", back_populates="tenant_relation"
+    )
 
 
 class Lease(Base):
     __tablename__ = "leases"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    unit_id: Mapped[int] = mapped_column(ForeignKey("units.id"), nullable=False)
+    property_id: Mapped[int] = mapped_column(ForeignKey("properties.id"), nullable=False)
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), nullable=False)
     start_date: Mapped[date] = mapped_column(Date)
     end_date: Mapped[date] = mapped_column(Date)
@@ -101,7 +101,7 @@ class Lease(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
-    unit: Mapped["Unit"] = relationship("Unit", back_populates="leases")
+    property: Mapped["Property"] = relationship("Property", back_populates="leases")
     tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="leases")
     charges: Mapped[list["Charge"]] = relationship("Charge", back_populates="lease")
     deposits: Mapped[list["Deposit"]] = relationship("Deposit", back_populates="lease")
@@ -111,7 +111,9 @@ class Charge(Base):
     __tablename__ = "charges"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    lease_id: Mapped[int] = mapped_column(ForeignKey("leases.id"), nullable=False)
+    lease_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("leases.id"), nullable=True
+    )
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), nullable=False)
     description: Mapped[str] = mapped_column(String(255), nullable=False)
     amount_cents: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -125,7 +127,7 @@ class Charge(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
-    lease: Mapped["Lease"] = relationship("Lease", back_populates="charges")
+    lease: Mapped[Optional["Lease"]] = relationship("Lease", back_populates="charges")
     tenant_relation: Mapped["Tenant"] = relationship("Tenant", back_populates="charges")
     payments: Mapped[list["Payment"]] = relationship("Payment", back_populates="charge")
 

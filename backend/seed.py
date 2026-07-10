@@ -18,7 +18,6 @@ from app.models import (  # noqa: F401
     Payment,
     Property,
     Tenant,
-    Unit,
     User,
 )
 

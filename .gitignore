@@ -11,6 +11,7 @@ __pycache__/
 backend/.venv/
 backend/alembic/versions/__pycache__/
 check_alembic.db
+*.db
 
 # Node / Vite
 node_modules/

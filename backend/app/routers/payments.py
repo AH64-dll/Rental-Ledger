@@ -37,11 +37,11 @@ def create_payment(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Charge not found")
 
     currently_paid = compute_paid_cents(db, charge_id)
-    remaining = charge.amount_cents - currently_paid
-    if body.amount_cents > remaining:
+    remaining_allowed = abs(charge.amount_cents) - currently_paid
+    if body.amount_cents > remaining_allowed:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Payment exceeds remaining balance. Maximum allowed: {remaining} cents.",
+            detail=f"Payment exceeds remaining balance. Maximum allowed: {remaining_allowed} cents.",
         )
 
     payment = Payment(charge_id=charge_id, **body.model_dump())

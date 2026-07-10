@@ -16,7 +16,10 @@ def compute_paid_cents(db: Session, charge_id: int) -> int:
 
 
 def compute_balance_cents(amount_cents: int, paid_cents: int) -> int:
-    return amount_cents - paid_cents
+    if amount_cents >= 0:
+        return amount_cents - paid_cents
+    else:
+        return amount_cents + paid_cents
 
 
 def derive_charge_status(balance_cents: int, paid_cents: int, due_date: date | None) -> str:
@@ -25,7 +28,7 @@ def derive_charge_status(balance_cents: int, paid_cents: int, due_date: date | N
     is_past_due = due_date is not None and due_date < date.today()
     if is_past_due:
         return "overdue"
-    if paid_cents > 0 and balance_cents > 0:
+    if paid_cents > 0:
         return "partial"
     return "unpaid"
 
@@ -33,17 +36,24 @@ def derive_charge_status(balance_cents: int, paid_cents: int, due_date: date | N
 def compute_tenant_balance(db: Session, tenant_id: int) -> dict:
     from app.models import Charge, Deposit, Lease, Payment
 
-    charges_result = db.execute(
-        select(sa_func.coalesce(sa_func.sum(Charge.amount_cents), 0)).where(
-            Charge.tenant_id == tenant_id
+    # Load all charges for the tenant with their accumulated payment sums
+    charges_with_payments = db.execute(
+        select(
+            Charge.amount_cents,
+            sa_func.coalesce(sa_func.sum(Payment.amount_cents), 0).label("paid_cents")
         )
-    ).scalar()
-
-    payments_result = db.execute(
-        select(sa_func.coalesce(sa_func.sum(Payment.amount_cents), 0))
-        .join(Charge, Payment.charge_id == Charge.id)
+        .outerjoin(Payment)
         .where(Charge.tenant_id == tenant_id)
-    ).scalar()
+        .group_by(Charge.id)
+    ).all()
+
+    net_balance_cents = 0
+    for amount_cents, paid_cents in charges_with_payments:
+        paid = int(paid_cents)
+        if amount_cents >= 0:
+            net_balance_cents += amount_cents - paid
+        else:
+            net_balance_cents += amount_cents + paid
 
     deposits_result = db.execute(
         select(
@@ -56,6 +66,6 @@ def compute_tenant_balance(db: Session, tenant_id: int) -> dict:
     ).scalar()
 
     return {
-        "net_balance_cents": int(charges_result) - int(payments_result),
+        "net_balance_cents": net_balance_cents,
         "deposits_held_cents": int(deposits_result),
     }
