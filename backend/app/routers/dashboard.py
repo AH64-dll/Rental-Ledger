@@ -1,13 +1,14 @@
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import select, func as sa_func
+from sqlalchemy import select, func as sa_func, case as sa_case
 from sqlalchemy.orm import Session
 
 from app.auth import current_user
 from app.db import get_db
 from app.models import Charge, Deposit, Lease, Payment
 from app.schemas.dashboard import DashboardResponse
+from app.services.lease import lazy_expire_leases
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -17,6 +18,7 @@ def get_overview(
     db: Session = Depends(get_db),
     _: str = Depends(current_user),
 ) -> DashboardResponse:
+    lazy_expire_leases(db)
     active_leases = db.scalar(
         select(sa_func.count()).select_from(Lease).where(Lease.status == "active")
     ) or 0
@@ -27,9 +29,12 @@ def get_overview(
         select(
             Charge.id,
             Charge.due_date,
+            Charge.amount_cents,
+            sa_func.coalesce(sa_func.sum(Payment.amount_cents), 0).label("paid_cents"),
             (
-                Charge.amount_cents
-                - sa_func.coalesce(sa_func.sum(Payment.amount_cents), 0)
+                sa_func.coalesce(sa_func.sum(Payment.amount_cents), 0)
+                * sa_case((Charge.amount_cents < 0, -1), else_=1)
+                + Charge.amount_cents
             ).label("balance"),
         )
         .outerjoin(Payment, Payment.charge_id == Charge.id)

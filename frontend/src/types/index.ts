@@ -40,7 +40,7 @@ export interface Lease {
 
 export interface Charge {
   id: number;
-  lease_id: number;
+  lease_id: number | null;
   tenant_id: number;
   description: string;
   amount_cents: number;
@@ -91,6 +91,7 @@ export interface Deposit {
   lease_id: number;
   amount_held_cents: number;
   collected_date: string;
+  status: "held" | "partially_refunded" | "refunded";
+  refunded_amount_cents: number;
   notes: string | null;
-  created_at: string;
 }

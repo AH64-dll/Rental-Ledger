@@ -90,6 +90,12 @@ def update_charge(
     charge = db.get(Charge, charge_id)
     if charge is None or charge.lease_id != lease_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Charge not found")
+    paid = compute_paid_cents(db, charge.id)
+    if body.amount_cents is not None and body.amount_cents < paid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot update charge amount to be less than the amount already paid",
+        )
     update_data = body.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(charge, key, value)

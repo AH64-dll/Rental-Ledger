@@ -6,6 +6,7 @@ from app.auth import current_user
 from app.db import get_db
 from app.models import Charge, Lease, LeaseStatus, Tenant, Unit
 from app.schemas.leases import LeaseCreate, LeaseResponse, LeaseUpdate
+from app.services.lease import lazy_expire_leases
 
 router = APIRouter(prefix="/leases", tags=["leases"])
 
@@ -33,6 +34,7 @@ def list_leases(
     db: Session = Depends(get_db),
     _: str = Depends(current_user),
 ) -> list[LeaseResponse]:
+    lazy_expire_leases(db)
     leases = db.execute(
         select(Lease)
         .options(joinedload(Lease.tenant), joinedload(Lease.unit))
@@ -53,6 +55,20 @@ def create_lease(
     tenant = db.get(Tenant, body.tenant_id)
     if tenant is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+
+    conflict = db.execute(
+        select(Lease).where(
+            Lease.unit_id == body.unit_id,
+            Lease.status == LeaseStatus.ACTIVE,
+            Lease.start_date <= body.end_date,
+            Lease.end_date >= body.start_date,
+        )
+    ).scalars().first()
+    if conflict:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Unit is already occupied during this period.",
+        )
 
     lease = Lease(
         unit_id=body.unit_id,
@@ -76,6 +92,7 @@ def get_lease(
     db: Session = Depends(get_db),
     _: str = Depends(current_user),
 ) -> LeaseResponse:
+    lazy_expire_leases(db)
     lease = db.execute(
         select(Lease)
         .options(joinedload(Lease.tenant), joinedload(Lease.unit))
@@ -134,6 +151,11 @@ def end_lease(
     lease = db.get(Lease, lease_id)
     if lease is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lease not found")
+    if lease.status != LeaseStatus.ACTIVE:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Lease is already {lease.status.value}.",
+        )
     lease.status = LeaseStatus.ENDED
     db.commit()
     db.refresh(lease)

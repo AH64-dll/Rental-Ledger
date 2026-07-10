@@ -89,13 +89,13 @@ def delete_unit(
     unit = db.get(Unit, unit_id)
     if unit is None or unit.property_id != property_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unit not found")
-    active_leases = db.execute(
-        select(Lease).where(Lease.unit_id == unit_id, Lease.status == "active")
+    any_lease = db.execute(
+        select(Lease).where(Lease.unit_id == unit_id)
     ).first()
-    if active_leases:
+    if any_lease:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Cannot delete unit with active leases. End the leases first.",
+            detail="Cannot delete unit with tenancy history.",
         )
     db.delete(unit)
     db.commit()
