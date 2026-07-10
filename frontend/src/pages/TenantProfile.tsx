@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useTenant, useTenantBalance, useUpdateTenant } from "../hooks/useTenants";
-import { useAllCharges, useDeleteGeneralCharge, useCreateGeneralCharge } from "../hooks/useCharges";
+import { useAllCharges, useDeleteGeneralCharge } from "../hooks/useCharges";
 import { useCreatePayment } from "../hooks/usePayments";
 import { useLeases, useCreateLease } from "../hooks/useLeases";
 import { useProperties } from "../hooks/useProperties";
@@ -10,6 +10,7 @@ import { Money } from "../components/Money";
 import { StatusPill } from "../components/StatusPill";
 import { ErrorBanner } from "../components/ErrorBanner";
 import { useLanguage } from "../context/LanguageContext";
+import { DebtForm } from "../components/debts/DebtForm";
 import {
   getElapsedDuration,
   getLocalDateString,
@@ -27,7 +28,6 @@ export function TenantProfile() {
   const updateMutation = useUpdateTenant();
   const deleteDebtMutation = useDeleteGeneralCharge();
   const createPaymentMutation = useCreatePayment();
-  const createDebtMutation = useCreateGeneralCharge();
   const createLeaseMutation = useCreateLease();
 
   const { language, t } = useLanguage();
@@ -42,10 +42,7 @@ export function TenantProfile() {
 
   const [activeTab, setActiveTab] = useState<"leases" | "debts">("leases");
 
-  // Add Debt Form State
   const [showDebtForm, setShowDebtForm] = useState(false);
-  const [debtDescription, setDebtDescription] = useState("");
-  const [debtAmountEgp, setDebtAmountEgp] = useState("");
 
   // Add Lease Form State
   const [showLeaseForm, setShowLeaseForm] = useState(false);
@@ -104,33 +101,6 @@ export function TenantProfile() {
         },
       });
     }
-  };
-
-  const handleCreateDebt = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!tenantId || !debtDescription || !debtAmountEgp) return;
-    const today = getLocalDateString();
-
-    setMutationError(null);
-    createDebtMutation.mutate(
-      {
-        tenant_id: tenantId,
-        description: debtDescription,
-        amount_cents: Math.round(Number(debtAmountEgp) * 100),
-        charge_date: today,
-        category: "other",
-      },
-      {
-        onSuccess: () => {
-          setShowDebtForm(false);
-          setDebtDescription("");
-          setDebtAmountEgp("");
-        },
-        onError: (err: any) => {
-          setMutationError(err?.response?.data?.detail || err?.message || t("operation_failed"));
-        },
-      }
-    );
   };
 
   const handleCreateLease = (e: React.FormEvent) => {
@@ -553,49 +523,7 @@ export function TenantProfile() {
           </div>
 
           {showDebtForm && (
-            <form onSubmit={handleCreateDebt} className="border p-4 rounded mb-4 flex flex-col gap-3 max-w-md">
-              <div>
-                <label className="block text-xs font-medium mb-1">{t("description")}</label>
-                <input
-                  type="text"
-                  placeholder={t("description")}
-                  value={debtDescription}
-                  onChange={(e) => setDebtDescription(e.target.value)}
-                  className="border rounded px-3 py-2 text-sm w-full"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium mb-1">
-                  {t("amount_egp")} ({language === "ar" ? "سالب إذا كان عليك" : "negative if you owe"})
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={debtAmountEgp}
-                  onChange={(e) => setDebtAmountEgp(e.target.value)}
-                  className="border rounded px-3 py-2 text-sm w-full"
-                  required
-                />
-              </div>
-              <div className="flex gap-2 justify-end">
-                <button
-                  type="submit"
-                  disabled={createDebtMutation.isPending}
-                  className="bg-green-600 text-white rounded px-4 py-1.5 text-xs font-semibold hover:bg-green-700"
-                >
-                  {t("save")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowDebtForm(false)}
-                  className="text-gray-600 text-xs"
-                >
-                  {t("cancel")}
-                </button>
-              </div>
-            </form>
+            <DebtForm tenantId={tenantId!} onSuccess={() => setShowDebtForm(false)} />
           )}
 
           <div className="overflow-x-auto">

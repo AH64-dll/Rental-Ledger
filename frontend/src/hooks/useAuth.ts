@@ -13,5 +13,6 @@ export function useMe() {
     queryKey: ["me"],
     queryFn: () => api.get("/me").then((r) => r.data),
     retry: false,
+    enabled: typeof window !== "undefined" && !!localStorage.getItem("token"),
   });
 }

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   useAllCharges,
-  useCreateGeneralCharge,
   useDeleteGeneralCharge,
 } from "../hooks/useCharges";
 import { useTenants } from "../hooks/useTenants";
@@ -9,13 +8,13 @@ import { useCreatePayment } from "../hooks/usePayments";
 import { Money } from "../components/Money";
 import { StatusPill } from "../components/StatusPill";
 import { ErrorBanner } from "../components/ErrorBanner";
+import { DebtForm } from "../components/debts/DebtForm";
 import { useLanguage } from "../context/LanguageContext";
 import { getElapsedDuration, getLocalDateString } from "../utils/dateUtils";
 
 export function DebtsList() {
   const { data: charges, isLoading: chargesLoading, error: chargesError } = useAllCharges();
   const { data: tenants } = useTenants();
-  const createDebtMutation = useCreateGeneralCharge();
   const deleteDebtMutation = useDeleteGeneralCharge();
   const createPaymentMutation = useCreatePayment();
   const { language, t } = useLanguage();
@@ -23,9 +22,7 @@ export function DebtsList() {
 
   // Add Debt Form State
   const [showForm, setShowForm] = useState(false);
-  const [tenantId, setTenantId] = useState("");
-  const [description, setDescription] = useState("");
-  const [amountEgp, setAmountEgp] = useState("");
+  const [selectedTenantId, setSelectedTenantId] = useState<number | null>(null);
 
   // Inline Payment Form State
   const [paymentChargeId, setPaymentChargeId] = useState<number | null>(null);
@@ -37,34 +34,6 @@ export function DebtsList() {
   const activeDebts = charges?.filter(
     (c) => c.lease_id === null && c.balance_cents > 0
   ) || [];
-
-  const handleCreateDebt = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!tenantId || !description || !amountEgp) return;
-    const today = getLocalDateString();
-
-    setMutationError(null);
-    createDebtMutation.mutate(
-      {
-        tenant_id: Number(tenantId),
-        description,
-        amount_cents: Math.round(Number(amountEgp) * 100),
-        charge_date: today,
-        category: "other",
-      },
-      {
-        onSuccess: () => {
-          setShowForm(false);
-          setTenantId("");
-          setDescription("");
-          setAmountEgp("");
-        },
-        onError: (err: any) => {
-          setMutationError(err?.response?.data?.detail || err?.message || t("operation_failed"));
-        },
-      }
-    );
-  };
 
   const handleDeleteDebt = (id: number) => {
     if (window.confirm(t("confirm_delete_debt"))) {
@@ -122,17 +91,14 @@ export function DebtsList() {
       <ErrorBanner error={mutationError} />
 
       {showForm && (
-        <form
-          onSubmit={handleCreateDebt}
-          className="bg-white rounded shadow-sm p-4 mb-6 flex flex-col gap-3 max-w-lg"
-        >
+        <div className="bg-white rounded shadow-sm p-4 mb-6 flex flex-col gap-3 max-w-lg">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               {t("tenant")}
             </label>
             <select
-              value={tenantId}
-              onChange={(e) => setTenantId(e.target.value)}
+              value={selectedTenantId ?? ""}
+              onChange={(e) => setSelectedTenantId(Number(e.target.value) || null)}
               className="w-full border rounded px-3 py-2 text-sm bg-white"
               required
             >
@@ -144,55 +110,15 @@ export function DebtsList() {
               ))}
             </select>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t("description")}
-            </label>
-            <input
-              type="text"
-              placeholder={t("description")}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full border rounded px-3 py-2 text-sm"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t("amount_egp")}
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              placeholder="0.00"
-              value={amountEgp}
-              onChange={(e) => setAmountEgp(e.target.value)}
-              className="w-full border rounded px-3 py-2 text-sm"
-              required
-            />
-          </div>
-
-
-
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={createDebtMutation.isPending}
-              className="bg-green-600 text-white rounded px-4 py-2 text-sm disabled:opacity-50"
-            >
-              {createDebtMutation.isPending ? t("saving") : t("save")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowForm(false)}
-              className="text-gray-600 text-sm"
-            >
-              {t("cancel")}
-            </button>
-          </div>
-        </form>
+          {selectedTenantId && <DebtForm tenantId={selectedTenantId} />}
+          <button
+            type="button"
+            onClick={() => { setShowForm(false); setSelectedTenantId(null); }}
+            className="text-gray-600 text-sm self-start"
+          >
+            {t("cancel")}
+          </button>
+        </div>
       )}
 
       {chargesLoading && <p className="text-gray-500">{t("loading")}</p>}
