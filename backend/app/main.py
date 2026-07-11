@@ -9,7 +9,15 @@ from starlette.responses import FileResponse
 
 from app.auth import current_user, hash_password
 from app.db import Base, SessionLocal, engine
-from app.models import User
+from app.models import (  # noqa: F401 — ensure all models are loaded for create_all
+    Charge,
+    Deposit,
+    Lease,
+    Payment,
+    Property,
+    Tenant,
+    User,
+)
 from app.routers import (
     auth,
     charges,
